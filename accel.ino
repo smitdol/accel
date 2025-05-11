@@ -1,7 +1,7 @@
 // https://lastminuteengineers.com/28byj48-stepper-motor-arduino-tutorial/
 // Include the AccelStepper Library (Mike McCauley)
 #include <AccelStepper.h>
-#include <MultiStepper.h>
+#define FULLSTEP 4
 #include <EEPROM.h>
 
 // Set the maximum steps per second, above 1000 is unreliable according to library
@@ -13,38 +13,36 @@
 
 // Creates two instances
 // Pins entered in sequence IN1-IN3-IN2-IN4 for proper step sequence
-AccelStepper stepper0( 2,  4,  3,  5, false); // was HALFSTEP, which doubles the step count pre rev or halves the RPM?
-AccelStepper stepper1( 6,  8,  7,  9, false);
-AccelStepper stepper2(10, 12, 11, 13, false);
-AccelStepper stepper3(14, 16, 15, 17, false);
-AccelStepper stepper4(18, 20, 19, 21, false);
-AccelStepper stepper5(22, 24, 23, 25, false);
-AccelStepper stepper6(26, 28, 27, 29, false);
-AccelStepper stepper7(30, 32, 31, 33, false);
-AccelStepper stepper8(34, 36, 35, 37, false);
-AccelStepper stepper9(38, 40, 39, 41, false);
-AccelStepper stepperA(42, 44, 43, 45, false);
-AccelStepper stepperB(46, 48, 47, 49, false);
-AccelStepper stepperC(50, 52, 51, 53, false);
-AccelStepper stepperD(54, 56, 55, 57, false);
-AccelStepper stepperE(58, 60, 59, 61, false);
-AccelStepper stepperF(62, 64, 63, 65, false);
+AccelStepper stepper0(FULLSTEP,  2,  4,  3,  5); // was HALFSTEP, which doubles the step count pre rev or halves the RPM?
+AccelStepper stepper1(FULLSTEP,  6,  8,  7,  9);
+AccelStepper stepper2(FULLSTEP, 10, 12, 11, 13);
+AccelStepper stepper3(FULLSTEP, 14, 16, 15, 17);
+AccelStepper stepper4(FULLSTEP, 18, 20, 19, 21);
+AccelStepper stepper5(FULLSTEP, 22, 24, 23, 25);
+AccelStepper stepper6(FULLSTEP, 26, 28, 27, 29);
+AccelStepper stepper7(FULLSTEP, 30, 32, 31, 33);
+AccelStepper stepper8(FULLSTEP, 34, 36, 35, 37);
+AccelStepper stepper9(FULLSTEP, 38, 40, 39, 41);
+AccelStepper stepperA(FULLSTEP, 42, 44, 43, 45);
+AccelStepper stepperB(FULLSTEP, 46, 48, 47, 49);
+AccelStepper stepperC(FULLSTEP, 50, 52, 51, 53);
+AccelStepper stepperD(FULLSTEP, 54, 56, 55, 57);
+AccelStepper stepperE(FULLSTEP, 58, 60, 59, 61);
+AccelStepper stepperF(FULLSTEP, 62, 64, 63, 65);
 
+AccelStepper* steppers[totalsteppers];
 
-MultiStepper steppers;
-
-volatile long positions[totalsteppers+1]; //1 extra is used in EEPROM 
-volatile bool moresteps;
-volatile unsigned i;
-volatile int eeAdress;
-int potpin = 0;  // [0=A0] analog pin used to connect the potentiometer
-int val;    // variable to read the value from the analog pin
-volatile long position;
-volatile int step;
-
-volatile unsigned long previousMillis = 0;  
-const long interval = 5000; 
-
+long positions[totalsteppers+1]; //1 extra is used in EEPROM 
+bool moresteps;
+bool targetset;
+bool written = false;
+unsigned i;
+int eeAdress;
+long position;
+int step;
+//https://arduino.stackexchange.com/questions/16352/measure-vcc-using-1-1v-bandgap ?
+//https://www.codrey.com/arduino-projects/arduino-power-down-auto-save/
+int PD_PIN =2; // D2 used for  power-down detection (INT.0)
 
 #define totalsteps 9
 volatile long pattern[totalsteps][totalsteppers] = {
@@ -61,32 +59,35 @@ volatile long pattern[totalsteps][totalsteppers] = {
 };
 
 void setup() {
-  Serial.begin(9600);
-  if (steppers.addStepper(stepper0)) Serial.write("0");
-  if (steppers.addStepper(stepper1)) Serial.write("1");
-  if (steppers.addStepper(stepper2)) Serial.write("2");
-  if (steppers.addStepper(stepper3)) Serial.write("3");
-  if (steppers.addStepper(stepper4)) Serial.write("4");
-  if (steppers.addStepper(stepper5)) Serial.write("5");
-  if (steppers.addStepper(stepper6)) Serial.write("6");
-  if (steppers.addStepper(stepper7)) Serial.write("7");
-  if (steppers.addStepper(stepper8)) Serial.write("8");
-  if (steppers.addStepper(stepper9)) Serial.write("9");
-  if (steppers.addStepper(stepperA)) Serial.write("A");
-  if (steppers.addStepper(stepperB)) Serial.write("B");
-  if (steppers.addStepper(stepperC)) Serial.write("C");
-  if (steppers.addStepper(stepperD)) Serial.write("D");
-  if (steppers.addStepper(stepperE)) Serial.write("E");
-  if (steppers.addStepper(stepperF)) Serial.write("F");
-  
-  for(i = 0; i < steppers._num_steppers; i++) {
-    steppers._steppers[i]->setMaxSpeed(MAXSPEED);
-    steppers._steppers[i]->setSpeed(SPEED);
-    steppers._steppers[i]->setAcceleration(ACCEL);
+  steppers[0] = &stepper0;
+  steppers[1] = &stepper1;
+  steppers[2] = &stepper2;
+  steppers[3] = &stepper3;
+  steppers[4] = &stepper4;
+  steppers[5] = &stepper5;
+  steppers[6] = &stepper6;
+  steppers[7] = &stepper7;
+  steppers[8] = &stepper8;
+  steppers[9] = &stepper9;
+  steppers[10] = &stepperA;
+  steppers[11] = &stepperB;
+  steppers[12] = &stepperC;
+  steppers[13] = &stepperD;
+  steppers[14] = &stepperE;
+  steppers[15] = &stepperF;
+  for(i = 0; i < totalsteppers; i++){
+    steppers[i]->setMaxSpeed(MAXSPEED);
+    steppers[i]->setSpeed(SPEED);
+    steppers[i]->setAcceleration(ACCEL);
+    steppers[i]->enableOutputs();
   }
-  restorePositions();
-  moresteps = true;
-  step=0;
+  moresteps = restorePositions(); // init next step or continue where left
+  if (!moresteps) step=totalsteps-1; //++step%totalsteps = 0
+//  attachInterrupt(digitalPinToInterrupt(PD_PIN), PD_ISR,FALLING); // Set-up Interrupt Service Routine (ISR)
+}
+
+void nextstep() {
+  step=(++step)%totalsteps;
 }
 
 void loop() {
@@ -103,66 +104,108 @@ void loop() {
   // if p => erase positions from EEPROM
   // if u => update programtable (positions, delay) (in EEPROM?)
 
-  moresteps = powerOk();
-
-  unsigned long currentMillis = millis();
-
-  if (currentMillis - previousMillis >= interval) {
-    previousMillis = currentMillis;
-    if (powerOk()) {
-      steppers.moveTo(pattern[step]);
-      while(powerOk() & steppers.run()){
-        YIELD; // do housekeeping
+  if (moresteps) {
+    moresteps = false;
+    for( i = 0; i < totalsteppers; i++) {
+      if (steppers[i]->run()) {
+        moresteps = true; // loop again
       }
     }
-
-    step=(++step)%totalsteps;
+    return;
   }
+	nextstep();
+	float longestDuration = 0.0;
+	for( i = 0; i < totalsteppers; i++) {
+    long distanceToGo = pattern[step][i] - steppers[i]->currentPosition();
+    float duration = abs(distanceToGo)/MAXSPEED;
+    if (duration > 0.0) {
+      steppers[i]->enableOutputs();
+    } else {
+      steppers[i]->disableOutputs();
+    }
+    longestDuration = max(duration,longestDuration);
+	}
+	if (longestDuration > 0.0) {
+    moresteps = true;
+    for( i = 0; i < totalsteppers; i++) {
+      long distanceToGo = pattern[step][i] - steppers[i]->currentPosition();
+      if (distanceToGo != 0) {
+        float speed = distanceToGo / longestDuration;
+        steppers[i]->setSpeed(speed);
+        steppers[i]->moveTo(pattern[step][i]); //reset's speed
+      } else {
+ //       steppers[i]->disableOutputs();
+      }
+    }
+	}
 }
 
-bool powerOk() {
-//  val = analogRead(potpin);
-//  if (false & (val < 972)) { // read analog pin that watches over the power, 1023 = 5V, which is 770k/550k (1%) of 12V, 972/1023 ~ 5% drop
+void PD_ISR () { // ISR to be get called on power-down state
 //    powerDown();
-//    return false;
-//  }
-  return true;
 }
 
 bool powerDown() {
-  for(i = 0; i < steppers._num_steppers; i++) {
-    steppers._steppers[i]->setSpeed(0);
-    steppers._steppers[i]->disableOutputs();
+  for(i = 0; i < totalsteppers; i++) {
+    steppers[i]->setSpeed(0);
+    steppers[i]->disableOutputs();
   }
   savePositions();
 }
 void savePositions() {
   position=0;
-  for(i = 0; i < steppers._num_steppers; i++) {
-    positions[i]= steppers._steppers[i]->currentPosition();
+  for(i = 0; i < totalsteppers; i++) {
+    positions[i]= steppers[i]->currentPosition();
     position^=positions[i];
   }
   positions[totalsteppers]=position;
   EEPROM.put(0, positions); // takes 3.3 ms per write
+  EEPROM.put(sizeof(positions),step);
 }
 
-void restorePositions() {
+bool restorePositions() {
   EEPROM.get(0, positions); // any position saved?
   position=0;
-  for(i = 0; i < steppers._num_steppers; i++) {
+  for(i = 0; i < totalsteppers; i++) {
     position^=positions[i];
   }
 
   if (positions[totalsteppers] == position) {
-    for(i = 0; i < steppers._num_steppers; i++) {
-      steppers._steppers[i]->setCurrentPosition(positions[i]);
+    for(i = 0; i < totalsteppers; i++) {
+      steppers[i]->setCurrentPosition(positions[i]);
     }
+    EEPROM.get(sizeof(positions),step);
+    return true;
   } else {
-    for(i = 0; i < steppers._num_steppers; i++){
-      steppers._steppers[i]->setCurrentPosition(0);
+    for(i = 0; i < totalsteppers; i++){
+      steppers[i]->setCurrentPosition(0);
     }
+    return false;
   }
-  for(i = 0; i < steppers._num_steppers; i++){
-    positions[i] = 0;
-  }
+}
+
+//https://forum.arduino.cc/t/detecting-battery-voltage-using-bandgap-internal-1-1v-reference/225628/2
+long readVcc() {
+  // Read 1.1V reference against AVcc
+  // set the reference to Vcc and the measurement to the internal 1.1V reference
+  #if defined(__AVR_ATmega32U4__) || defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__)
+    ADMUX = _BV(REFS0) | _BV(MUX4) | _BV(MUX3) | _BV(MUX2) | _BV(MUX1);
+  #elif defined (__AVR_ATtiny24__) || defined(__AVR_ATtiny44__) || defined(__AVR_ATtiny84__)
+    ADMUX = _BV(MUX5) | _BV(MUX0);
+  #elif defined (__AVR_ATtiny25__) || defined(__AVR_ATtiny45__) || defined(__AVR_ATtiny85__)
+    ADMUX = _BV(MUX3) | _BV(MUX2);
+  #else
+    ADMUX = _BV(REFS0) | _BV(MUX3) | _BV(MUX2) | _BV(MUX1);
+  #endif  
+ 
+  delay(2); // Wait for Vref to settle
+  ADCSRA |= _BV(ADSC); // Start conversion
+  while (bit_is_set(ADCSRA,ADSC)); // measuring
+ 
+  uint8_t low  = ADCL; // must read ADCL first - it then locks ADCH  
+  uint8_t high = ADCH; // unlocks both
+ 
+  long result = (high<<8) | low;
+ 
+  result = 1125300L / result; // Calculate Vcc (in mV); 1125300 = 1.1*1023*1000
+  return result; // Vcc in millivolts
 }
