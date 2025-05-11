@@ -113,9 +113,9 @@ void loop() {
     }
     return;
   }
-	nextstep();
-	float longestDuration = 0.0;
-	for( i = 0; i < totalsteppers; i++) {
+  nextstep();
+  float longestDuration = 0.0;
+  for( i = 0; i < totalsteppers; i++) {
     long distanceToGo = pattern[step][i] - steppers[i]->currentPosition();
     float duration = abs(distanceToGo)/MAXSPEED;
     if (duration > 0.0) {
@@ -124,8 +124,8 @@ void loop() {
       steppers[i]->disableOutputs();
     }
     longestDuration = max(duration,longestDuration);
-	}
-	if (longestDuration > 0.0) {
+  }
+  if (longestDuration > 0.0) {
     moresteps = true;
     for( i = 0; i < totalsteppers; i++) {
       long distanceToGo = pattern[step][i] - steppers[i]->currentPosition();
@@ -137,7 +137,7 @@ void loop() {
  //       steppers[i]->disableOutputs();
       }
     }
-	}
+  }
 }
 
 void PD_ISR () { // ISR to be get called on power-down state
