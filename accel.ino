@@ -40,9 +40,12 @@ unsigned i;
 int eeAdress;
 long position;
 int step;
+int motornumber = totalsteppers;
 //https://arduino.stackexchange.com/questions/16352/measure-vcc-using-1-1v-bandgap ?
 //https://www.codrey.com/arduino-projects/arduino-power-down-auto-save/
-int PD_PIN =2; // D2 used for  power-down detection (INT.0)
+//int PD_PIN =2; // D2 used for  power-down detection (INT.0)
+
+// 1019 = 2038/2, where 2038 is not 2048 
 
 #define totalsteps 9
 volatile long pattern[totalsteps][totalsteppers] = {
@@ -59,6 +62,9 @@ volatile long pattern[totalsteps][totalsteppers] = {
 };
 
 void setup() {
+  Serial.begin(9600); //define baud rate
+  Serial.println("Moin Moin"); //print a message
+
   steppers[0] = &stepper0;
   steppers[1] = &stepper1;
   steppers[2] = &stepper2;
@@ -75,35 +81,79 @@ void setup() {
   steppers[13] = &stepperD;
   steppers[14] = &stepperE;
   steppers[15] = &stepperF;
+
+  for(i = 0; i < totalsteppers; i++){
+    steppers[i]->disableOutputs();
+  }
+  for(i = 0; i < totalsteppers; i++){
+    home(i);
+  }
   for(i = 0; i < totalsteppers; i++){
     steppers[i]->setMaxSpeed(MAXSPEED);
     steppers[i]->setSpeed(SPEED);
     steppers[i]->setAcceleration(ACCEL);
-    steppers[i]->enableOutputs();
   }
-  moresteps = restorePositions(); // init next step or continue where left
+  moresteps = false; //restorePositions(); // init next step or continue where left
   if (!moresteps) step=totalsteps-1; //++step%totalsteps = 0
 //  attachInterrupt(digitalPinToInterrupt(PD_PIN), PD_ISR,FALLING); // Set-up Interrupt Service Routine (ISR)
+  
 }
 
 void nextstep() {
   step=(++step)%totalsteps;
 }
 
-void loop() {
-  // proper shutdown via serial comm? clear EEPROM in that case
-  // serial.read 
-  // if x => exit
-  // if s => start
-  // if c => calibration submenu:
-  // if # => select motor # 
-  // if + => move slow clockwise
-  // if - => move slow ccw
-  // x during calibration stops motor and set position to 0
-  // if e => erase EEPROM
-  // if p => erase positions from EEPROM
-  // if u => update programtable (positions, delay) (in EEPROM?)
+void home(unsigned i) {
+  //https://curiousscientist.tech/blog/accelstepper-tb6600-homing
+  if (i < totalsteppers) {
+    Serial.print("Start HOMING motor "); Serial.println(i); //print action
+    steppers[i]->enableOutputs();
+    steppers[i]->setCurrentPosition(0);
+    steppers[i]->setAcceleration(100); //defining some low acceleration
+    steppers[i]->setMaxSpeed(100); //set speed, 100 for test purposes
+    steppers[i]->move(-2048); ////set distance - negative value flips the direction, 2048 > 2038 
+    Serial.println("Moving to -2048");
+    while (steppers[i]->run()) {
+      Serial.print(".");
+    }
+    Serial.println();
+    steppers[i]->setMaxSpeed(MAXSPEED);
+    steppers[i]->setSpeed(SPEED);
+    steppers[i]->setAcceleration(ACCEL);
+    steppers[i]->move(512); // off-set = 2048/4
+    Serial.println("Moving to 512");
+    while (steppers[i]->run()) {
+      Serial.print(".");
+    }
+    Serial.println();
+    steppers[i]->setCurrentPosition(0);
+    steppers[i]->disableOutputs();
+    Serial.print("Completed HOMING motor "); Serial.println(i); //print action
+  } else {
+    Serial.print("Cannot home motor "); Serial.println(i);
+  }
+}
 
+void CheckSerial() {
+  if (Serial.available() > 0) //if something comes
+  {
+    char receivedCommand = Serial.read(); // this will read the command character
+    switch (receivedCommand) {
+      case 'h':   
+        // homing
+        motornumber = Serial.parseInt();
+        home(motornumber);
+        break;
+      default:
+        Serial.print("received "); Serial.println(receivedCommand);
+        break;
+    }
+  }
+
+}
+
+void loop() {
+  CheckSerial();
   if (moresteps) {
     moresteps = false;
     for( i = 0; i < totalsteppers; i++) {
