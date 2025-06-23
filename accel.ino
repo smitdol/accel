@@ -85,16 +85,11 @@ void setup() {
   for(i = 0; i < totalsteppers; i++){
     steppers[i]->disableOutputs();
   }
-  for(i = 0; i < totalsteppers; i++){
-    home(i);
-  }
-  for(i = 0; i < totalsteppers; i++){
-    steppers[i]->setMaxSpeed(MAXSPEED);
-    steppers[i]->setSpeed(SPEED);
-    steppers[i]->setAcceleration(ACCEL);
+  for(i = 0; i < totalsteppers; i+=4){
+    home(i, 4);
   }
   moresteps = false; //restorePositions(); // init next step or continue where left
-  if (!moresteps) step=totalsteps-1; //++step%totalsteps = 0
+  step=totalsteps-1; //++step%totalsteps = 0
 //  attachInterrupt(digitalPinToInterrupt(PD_PIN), PD_ISR,FALLING); // Set-up Interrupt Service Routine (ISR)
   
 }
@@ -103,35 +98,51 @@ void nextstep() {
   step=(++step)%totalsteps;
 }
 
-void home(unsigned i) {
+void home(unsigned i, unsigned j) {
   //https://curiousscientist.tech/blog/accelstepper-tb6600-homing
-  if (i < totalsteppers) {
-    Serial.print("Start HOMING motor "); Serial.println(i); //print action
-    steppers[i]->enableOutputs();
-    steppers[i]->setCurrentPosition(0);
-    steppers[i]->setAcceleration(100); //defining some low acceleration
-    steppers[i]->setMaxSpeed(100); //set speed, 100 for test purposes
-    steppers[i]->move(-2048); ////set distance - negative value flips the direction, 2048 > 2038 
-    Serial.println("Moving to -2048");
-    while (steppers[i]->run()) {
-      Serial.print(".");
-    }
-    Serial.println();
-    steppers[i]->setMaxSpeed(MAXSPEED);
-    steppers[i]->setSpeed(SPEED);
-    steppers[i]->setAcceleration(ACCEL);
-    steppers[i]->move(512); // off-set = 2048/4
-    Serial.println("Moving to 512");
-    while (steppers[i]->run()) {
-      Serial.print(".");
-    }
-    Serial.println();
-    steppers[i]->setCurrentPosition(0);
-    steppers[i]->disableOutputs();
-    Serial.print("Completed HOMING motor "); Serial.println(i); //print action
-  } else {
-    Serial.print("Cannot home motor "); Serial.println(i);
+  if (i+j > totalsteppers) {
+    Serial.print("Cannot home motor "); Serial.println(i+j);
+    return;
   }
+  unsigned step = 0;
+  Serial.print("Start HOMING motors "); Serial.print(i); Serial.print("-");Serial.println(i+j-1);
+  for (unsigned k = i; k < i+j; k++){
+    steppers[k]->enableOutputs();
+    steppers[k]->setCurrentPosition(0);
+    steppers[k]->setAcceleration(100); //defining some low acceleration
+    steppers[k]->setMaxSpeed(100); //set speed, 100 for test purposes
+    steppers[k]->move(-2048); ////set distance - negative value flips the direction, 2048 > 2038 
+  }
+  Serial.println("Moving to -2048");
+  do {
+    moresteps = false;
+    for (unsigned k = i; k < i+j; k++){
+      if (steppers[k]->run()) {
+        moresteps = true;
+      }
+    }
+  } while (moresteps);
+  for (unsigned k = i; k < i+j; k++){
+    steppers[k]->setMaxSpeed(MAXSPEED);
+    steppers[k]->setSpeed(SPEED);
+    steppers[k]->setAcceleration(ACCEL);
+    steppers[k]->move(512); // off-set = 2048/4
+  }
+  Serial.println("Moving to 512");
+  do {
+    moresteps = false;
+    for (unsigned k = i; k < i+j; k++){
+      if (steppers[k]->run()) {
+        moresteps = true;
+      }
+    }
+  } while (moresteps);
+  for (unsigned k = i; k < i+j; k++){
+    steppers[k]->setCurrentPosition(0);
+    steppers[k]->run();
+    steppers[k]->disableOutputs();
+  }
+  Serial.print("Completed HOMING motors "); Serial.print(i); Serial.print("-");Serial.println(i+j-1);
 }
 
 void CheckSerial() {
@@ -142,7 +153,7 @@ void CheckSerial() {
       case 'h':   
         // homing
         motornumber = Serial.parseInt();
-        home(motornumber);
+        home(motornumber,1);
         break;
       default:
         Serial.print("received "); Serial.println(receivedCommand);
