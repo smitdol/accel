@@ -4,6 +4,15 @@
 #define FULLSTEP 4
 #include <EEPROM.h>
 
+#include <Wire.h>
+#include <hd44780.h>                       // main hd44780 header
+#include <hd44780ioClass/hd44780_I2Cexp.h> // i2c expander i/o class header
+
+hd44780_I2Cexp lcd; // declare lcd object: auto locate & auto config expander chip
+// LCD geometry
+const int LCD_COLS = 16;
+const int LCD_ROWS = 2;
+
 // Set the maximum steps per second, above 1000 is unreliable according to library
 #define SPEED 1000.0
 #define MAXSPEED 1000.0
@@ -47,28 +56,62 @@ int motornumber = totalsteppers;
 
 // 1019 = 2038/2, where 2038 is not 2048 
 
-#define totalsteps 14
+#define totalsteps 17
 volatile long pattern[totalsteps][totalsteppers] = {
-  //    0,     1,     2,     3,     4,     5,     5,     7,     8,     9,    10,   11,    12,     13,    14,    15 
-  {     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0},
-  {  1019,  1019,  1019,  1019,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0},
-  {  1019,  1019,  1019,  1019,  1019,  1019,  1019,  1019,     0,     0,     0,     0,     0,     0,     0,     0},
-  {  1019,  1019,  1019,  1019,  1019,  1019,  1019,  1019,  1019,  1019,  1019,  1019,     0,     0,     0,     0},
-  {  1019,  1019,  1019,  1019,  1019,  1019,  1019,  1019,  1019,  1019,  1019,  1019,  1019,  1019,  1019,  1019},
-  {  1019,  1019,  1019,  1019,  1019,  1019,  1019,  1019,  1019,  1019,  1019,  1019,  1019,  1019,  1019,  1019},
-  {     0,     0,     0,     0,  1019,  1019,  1019,  1019,  1019,  1019,  1019,  1019,  1019,  1019,  1019,  1019},
-  {     0,     0,     0,     0,     0,     0,     0,     0,  1019,  1019,  1019,  1019,  1019,  1019,  1019,  1019},
-  {     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,  1019,  1019,  1019,  1019},
-  {     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0},
-  {  -512,  -512,  -512,  -512,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0},
-  {     0,     0,     0,     0,  -512,  -512,  -512,  -512,     0,     0,     0,     0,     0,     0,     0,     0},
-  {     0,     0,     0,     0,     0,     0,     0,     0,  -512,  -512,  -512,  -512,     0,     0,     0,     0},
-  {     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,  -512,  -512,  -512,  -512},
-};
+ // 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15 
+  { 0, 0, 0, 0, 0, 0, 0, 0, 4, 4, 4, 4, 4, 4, 4, 4},
+  { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+  { 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0},
+  { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+  { 1, 3, 1, 3, 1, 3, 1, 3, 1, 3, 1, 3, 1, 3, 1, 3},
+  { 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3},
+  { 4, 4, 2, 3, 4, 4, 2, 3, 4, 4, 2, 3, 4, 4, 2, 3},
+  { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4},
+  { 0, 1, 2, 3, 4, 4, 4, 4, 3, 2, 1, 0, 4, 4, 4, 4},
+  { 0, 0, 1, 2, 3, 4, 4, 3, 2, 1, 0, 0, 4, 4, 4, 4},
+  { 0, 0, 0, 1, 2, 3, 3, 2, 1, 0, 0, 0, 4, 4, 4, 4},
+  { 0, 0, 0, 0, 1, 2, 2, 1, 0, 0, 0, 0, 4, 2, 2, 4},
+  { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+  {-1, 0,-1, 0,-1, 0,-1, 0,-1, 0,-1, 0,-1, 0,-1, 0},
+  {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+  { 0,-1, 0,-1, 0,-1, 0,-1, 0,-1, 0,-1, 0,-1, 0,-1},
+  { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+  };
+
+char row1[17];
+char row2[17];
+char buffer[17];
+
+void LogLine(const char * s) {
+  Serial.println(s);
+  strcpy(row1, row2);
+  snprintf(row2, 16, s);
+  lcd.clear();
+  lcd.setCursor(0,0);  
+  lcd.print(row1);  
+  lcd.setCursor(0,1);  
+  lcd.print(row2);  
+}
 
 void setup() {
   Serial.begin(9600); //define baud rate
   Serial.println("Moin Moin"); //print a message
+  memset(row1,'\0',17);
+  memset(row2,'\0',17);
+  memset(buffer,'\0',17);
+
+  int status;
+	status = lcd.begin(LCD_COLS, LCD_ROWS);
+	if(status) // non zero status means it was unsuccesful
+	{
+  	Serial.print("LCD initalization failed: ");
+		Serial.println(status);
+
+		// hd44780 has a fatalError() routine that blinks an led if possible
+		// begin() failed so blink error code using the onboard LED if possible
+		hd44780::fatalError(status); // does not return
+	}
+	lcd.print("Hello, World!");
 
   steppers[0] = &stepper0;
   steppers[1] = &stepper1;
@@ -101,16 +144,22 @@ void setup() {
 
 void nextstep() {
   step=(++step)%totalsteps;
+  snprintf(buffer,16,"Next step: %i", step);
+  LogLine(buffer);
 }
 
 void home(unsigned i, unsigned j) {
   //https://curiousscientist.tech/blog/accelstepper-tb6600-homing
+  LogLine("Homing motors");
   if (i+j > totalsteppers) {
-    Serial.print("Cannot home motor "); Serial.println(i+j);
+    LogLine("Cannot home");
+    snprintf(buffer,16, "motor %i", i+j);
+    LogLine(buffer);
     return;
   }
   unsigned step = 0;
-  Serial.print("Start HOMING motors "); Serial.print(i); Serial.print("-");Serial.println(i+j-1);
+  snprintf(buffer, 16, "%i - %i", i, i+j-1);
+  LogLine(buffer);
   for (unsigned k = i; k < i+j; k++){
     steppers[k]->enableOutputs();
     steppers[k]->setCurrentPosition(0);
@@ -118,7 +167,7 @@ void home(unsigned i, unsigned j) {
     steppers[k]->setMaxSpeed(100); //set speed, 100 for test purposes
     steppers[k]->move(-2048); ////set distance - negative value flips the direction, 2048 > 2038 
   }
-  Serial.println("Moving to -2048");
+  snprintf(buffer, 16, "Moving to -2048");LogLine(buffer);
   do {
     moresteps = false;
     for (unsigned k = i; k < i+j; k++){
@@ -133,7 +182,8 @@ void home(unsigned i, unsigned j) {
     steppers[k]->setAcceleration(ACCEL);
     steppers[k]->move(512); // off-set = 2048/4
   }
-  Serial.println("Moving to 512");
+  snprintf(buffer, 16, "Moving to 512");LogLine(buffer);
+  LogLine(buffer);
   do {
     moresteps = false;
     for (unsigned k = i; k < i+j; k++){
@@ -147,7 +197,9 @@ void home(unsigned i, unsigned j) {
     steppers[k]->run();
     steppers[k]->disableOutputs();
   }
-  Serial.print("Completed HOMING motors "); Serial.print(i); Serial.print("-");Serial.println(i+j-1);
+  LogLine("Completed HOMING");
+  snprintf(buffer, 16, "motors %i - %i", i, i+j-1);
+  LogLine(buffer);
 }
 
 void CheckSerial() {
@@ -161,7 +213,8 @@ void CheckSerial() {
         home(motornumber,1);
         break;
       default:
-        Serial.print("received "); Serial.println(receivedCommand);
+        snprintf(buffer, 16, "received %c",receivedCommand);
+        LogLine(buffer);
         break;
     }
   }
@@ -177,12 +230,12 @@ void loop() {
         moresteps = true; // loop again
       }
     }
-    return;
+    return; // loop again
   }
   nextstep();
   float longestDuration = 0.0;
   for( i = 0; i < totalsteppers; i++) {
-    long distanceToGo = pattern[step][i] - steppers[i]->currentPosition();
+    long distanceToGo = pattern[step][i]*512 - steppers[i]->currentPosition();
     float duration = abs(distanceToGo)/MAXSPEED;
     if (duration > 0.0) {
       steppers[i]->enableOutputs();
@@ -194,11 +247,11 @@ void loop() {
   if (longestDuration > 0.0) {
     moresteps = true;
     for( i = 0; i < totalsteppers; i++) {
-      long distanceToGo = pattern[step][i] - steppers[i]->currentPosition();
+      long distanceToGo = pattern[step][i]*512 - steppers[i]->currentPosition();
       if (distanceToGo != 0) {
         float speed = distanceToGo / longestDuration;
         steppers[i]->setSpeed(speed);
-        steppers[i]->moveTo(pattern[step][i]); //reset's speed
+        steppers[i]->moveTo(pattern[step][i]*512); //reset's speed
       } else {
  //       steppers[i]->disableOutputs();
       }
