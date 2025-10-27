@@ -86,11 +86,13 @@ void LogLine(const char * s) {
   Serial.println(s);
   strcpy(row1, row2);
   snprintf(row2, 16, s);
+  Wire.begin();
   lcd.clear();
   lcd.setCursor(0,0);  
   lcd.print(row1);  
   lcd.setCursor(0,1);  
-  lcd.print(row2);  
+  lcd.print(row2);
+  Wire.end();  
 }
 
 void setup() {
@@ -133,8 +135,8 @@ void setup() {
   for(i = 0; i < totalsteppers; i++){
     steppers[i]->disableOutputs();
   }
-  for(i = 0; i < totalsteppers; i+=4){
-    home(i, 4);
+  for(i = 0; i < totalsteppers; i+=8){
+    home(i, 8);
   }
   moresteps = false; //restorePositions(); // init next step or continue where left
   step=totalsteps-1; //++step%totalsteps = 0
@@ -144,7 +146,7 @@ void setup() {
 
 void nextstep() {
   step=(++step)%totalsteps;
-  snprintf(buffer,16,"Next step: %i", step);
+  snprintf(buffer,16,"Next step: %i  ", step);
   LogLine(buffer);
 }
 
@@ -158,7 +160,7 @@ void home(unsigned i, unsigned j) {
     return;
   }
   unsigned step = 0;
-  snprintf(buffer, 16, "%i - %i", i, i+j-1);
+  snprintf(buffer, 16, "%i - %i", i+1, i+j);
   LogLine(buffer);
   for (unsigned k = i; k < i+j; k++){
     steppers[k]->enableOutputs();
@@ -167,7 +169,7 @@ void home(unsigned i, unsigned j) {
     steppers[k]->setMaxSpeed(100); //set speed, 100 for test purposes
     steppers[k]->move(-2048); ////set distance - negative value flips the direction, 2048 > 2038 
   }
-  snprintf(buffer, 16, "Moving to -2048");LogLine(buffer);
+  //snprintf(buffer, 16, "Moving to -2048");LogLine(buffer);
   do {
     moresteps = false;
     for (unsigned k = i; k < i+j; k++){
@@ -183,7 +185,6 @@ void home(unsigned i, unsigned j) {
     steppers[k]->move(512); // off-set = 2048/4
   }
   snprintf(buffer, 16, "Moving to 512");LogLine(buffer);
-  LogLine(buffer);
   do {
     moresteps = false;
     for (unsigned k = i; k < i+j; k++){
@@ -198,7 +199,7 @@ void home(unsigned i, unsigned j) {
     steppers[k]->disableOutputs();
   }
   LogLine("Completed HOMING");
-  snprintf(buffer, 16, "motors %i - %i", i, i+j-1);
+  snprintf(buffer, 16, "motors %i - %i", i+1, i+j);
   LogLine(buffer);
 }
 
