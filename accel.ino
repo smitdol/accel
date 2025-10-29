@@ -26,7 +26,7 @@ AccelStepper stepper0(FULLSTEP,  2,  4,  3,  5); // was HALFSTEP, which doubles 
 AccelStepper stepper1(FULLSTEP,  6,  8,  7,  9);
 AccelStepper stepper2(FULLSTEP, 10, 12, 11, 13);
 AccelStepper stepper3(FULLSTEP, 14, 16, 15, 17);
-AccelStepper stepper4(FULLSTEP, 18, 20, 19, 21);
+AccelStepper stepper4(FULLSTEP, 18, 20, 19, 21); //Tx1,SDA,RX1,SCL
 AccelStepper stepper5(FULLSTEP, 22, 24, 23, 25);
 AccelStepper stepper6(FULLSTEP, 26, 28, 27, 29);
 AccelStepper stepper7(FULLSTEP, 30, 32, 31, 33);
@@ -38,6 +38,7 @@ AccelStepper stepperC(FULLSTEP, 50, 52, 51, 53);
 AccelStepper stepperD(FULLSTEP, 54, 56, 55, 57);
 AccelStepper stepperE(FULLSTEP, 58, 60, 59, 61);
 AccelStepper stepperF(FULLSTEP, 62, 64, 63, 65);
+//AccelStepper stepperF(FULLSTEP, 66, 68, 67, 69);
 
 AccelStepper* steppers[totalsteppers];
 
@@ -86,8 +87,13 @@ void LogLine(const char * s) {
   Serial.println(s);
   strcpy(row1, row2);
   snprintf(row2, 16, s);
+  memset(buffer,' ',16);
   Wire.begin();
   lcd.clear();
+  lcd.setCursor(0,0);  
+  lcd.print(buffer);  
+  lcd.setCursor(0,1);  
+  lcd.print(buffer);
   lcd.setCursor(0,0);  
   lcd.print(row1);  
   lcd.setCursor(0,1);  
@@ -236,7 +242,7 @@ void loop() {
   nextstep();
   float longestDuration = 0.0;
   for( i = 0; i < totalsteppers; i++) {
-    long distanceToGo = pattern[step][i]*512 - steppers[i]->currentPosition();
+    long distanceToGo = pattern[step][i]*255 - steppers[i]->currentPosition();
     float duration = abs(distanceToGo)/MAXSPEED;
     if (duration > 0.0) {
       steppers[i]->enableOutputs();
@@ -248,11 +254,11 @@ void loop() {
   if (longestDuration > 0.0) {
     moresteps = true;
     for( i = 0; i < totalsteppers; i++) {
-      long distanceToGo = pattern[step][i]*512 - steppers[i]->currentPosition();
+      long distanceToGo = pattern[step][i]*255 - steppers[i]->currentPosition();
       if (distanceToGo != 0) {
         float speed = distanceToGo / longestDuration;
         steppers[i]->setSpeed(speed);
-        steppers[i]->moveTo(pattern[step][i]*512); //reset's speed
+        steppers[i]->moveTo(pattern[step][i]*255); //reset's speed
       } else {
  //       steppers[i]->disableOutputs();
       }
