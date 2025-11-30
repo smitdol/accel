@@ -2,7 +2,7 @@
 // Include the AccelStepper Library (Mike McCauley)
 #include <AccelStepper.h>
 #define FULLSTEP 4
-#include <EEPROM.h>
+//#include <EEPROM.h>
 
 #include <Wire.h>
 #include <hd44780.h>                       // main hd44780 header
@@ -14,9 +14,20 @@ const int LCD_COLS = 16;
 const int LCD_ROWS = 2;
 
 // Set the maximum steps per second, above 1000 is unreliable according to library
-#define SPEED 1000.0
-#define MAXSPEED 1000.0
+#define SPEED 1024.0
+#define MAXSPEED 1024.0
 #define ACCEL 200.0
+#define HOEK 128 //2048*22.5/360 = 128
+#define A -28  // mechanische 0/aanloop/motor op die positie wodt op 0 gezet
+#define B HOEK
+#define C B+HOEK
+#define D C+HOEK
+#define E D+HOEK
+#define F E+HOEK
+#define G F+HOEK
+#define H G+HOEK
+#define I H+HOEK //1024 = 180gr
+#define J 0 //
 
 #define totalsteppers 16
 
@@ -43,6 +54,7 @@ AccelStepper stepperF(FULLSTEP, 62, 64, 63, 65);
 AccelStepper* steppers[totalsteppers];
 
 long positions[totalsteppers+1]; //1 extra is used in EEPROM 
+long distanceToGo[totalsteppers];
 bool moresteps;
 bool targetset;
 bool written = false;
@@ -57,26 +69,30 @@ int motornumber = totalsteppers;
 
 // 1019 = 2038/2, where 2038 is not 2048 
 
-#define totalsteps 17
+#define totalsteps 2
 volatile long pattern[totalsteps][totalsteppers] = {
  // 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15 
-  { 0, 0, 0, 0, 0, 0, 0, 0, 4, 4, 4, 4, 4, 4, 4, 4},
-  { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-  { 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0},
-  { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
-  { 1, 3, 1, 3, 1, 3, 1, 3, 1, 3, 1, 3, 1, 3, 1, 3},
-  { 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3},
-  { 4, 4, 2, 3, 4, 4, 2, 3, 4, 4, 2, 3, 4, 4, 2, 3},
-  { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4},
-  { 0, 1, 2, 3, 4, 4, 4, 4, 3, 2, 1, 0, 4, 4, 4, 4},
-  { 0, 0, 1, 2, 3, 4, 4, 3, 2, 1, 0, 0, 4, 4, 4, 4},
-  { 0, 0, 0, 1, 2, 3, 3, 2, 1, 0, 0, 0, 4, 4, 4, 4},
-  { 0, 0, 0, 0, 1, 2, 2, 1, 0, 0, 0, 0, 4, 2, 2, 4},
-  { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-  {-1, 0,-1, 0,-1, 0,-1, 0,-1, 0,-1, 0,-1, 0,-1, 0},
-  {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-  { 0,-1, 0,-1, 0,-1, 0,-1, 0,-1, 0,-1, 0,-1, 0,-1},
-  { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+  { I, J, I, J, I, J, I, J, I, J, I, J, I, J, I, J},
+  { J, I, J, I, J, I, J, I, J, I, J, I, J, I, J, I},
+  /* 
+  { I, H, A, A, A, A, A, A, A, A, A, A, A, A, A, A},
+  { J, A, F, C, B, A, A, A, A, A, A, A, A, A, A, A},
+  { I, H, F, C, B, B, B, B, B, B, B, B, A, A, A, A},
+  { J, A, B, F, B, B, B, B, B, B, B, B, B, B, B, B},
+  { I, H, B, F, B, D, B, D, B, D, B, D, B, D, B, D},
+  { J, A, C, D, C, D, C, D, C, D, C, D, C, D, C, D},
+  { I, H, C, D, E, E, C, D, E, E, C, D, E, E, C, D},
+  { J, A, E, E, E, E, E, E, E, E, E, E, E, E, E, E},
+  { I, H, E, E, A, A, A, A, A, A, A, A, E, E, E, E},
+  { J, A, A, A, A, A, A, A, A, H, H, H, A, A, A, A},
+  { I, H, G, H, F, A, H, H, H, H, H, H, A, A, A, A},
+  { J, A, G, A, F, A, A, A, A, A, A, H, A, A, A, A},
+  { I, H, G, A, F, A, A, A, A, A, B, A, E, E, E, E},
+  { J, A, B, C, D, E, E, D, A, A, B, A, E, E, E, E},
+  { I, H, B, B, C, D, D, C, B, A, A, A, E, E, E, E},
+  { J, A, B, B, C, D, D, C, B, A, A, A, E, C, C, F},
+  { I, H, B, B, A, A, A, A, A, A, A, A, A, C, C, F},
+  */
   };
 
 char row1[17];
@@ -117,7 +133,7 @@ void setup() {
 
 		// hd44780 has a fatalError() routine that blinks an led if possible
 		// begin() failed so blink error code using the onboard LED if possible
-		hd44780::fatalError(status); // does not return
+		 hd44780::fatalError(status); // does not return
 	}
 	lcd.print("Hello, World!");
 
@@ -152,8 +168,6 @@ void setup() {
 
 void nextstep() {
   step=(++step)%totalsteps;
-  snprintf(buffer,16,"Next step: %i  ", step);
-  LogLine(buffer);
 }
 
 void home(unsigned i, unsigned j) {
@@ -188,18 +202,6 @@ void home(unsigned i, unsigned j) {
     steppers[k]->setMaxSpeed(MAXSPEED);
     steppers[k]->setSpeed(SPEED);
     steppers[k]->setAcceleration(ACCEL);
-    steppers[k]->move(512); // off-set = 2048/4
-  }
-  snprintf(buffer, 16, "Moving to 512");LogLine(buffer);
-  do {
-    moresteps = false;
-    for (unsigned k = i; k < i+j; k++){
-      if (steppers[k]->run()) {
-        moresteps = true;
-      }
-    }
-  } while (moresteps);
-  for (unsigned k = i; k < i+j; k++){
     steppers[k]->setCurrentPosition(0);
     steppers[k]->run();
     steppers[k]->disableOutputs();
@@ -239,11 +241,23 @@ void loop() {
     }
     return; // loop again
   }
+
+  for( i = 0; i < totalsteppers; i++) {
+    if (A == steppers[i]->currentPosition()) {
+      // home again
+      steppers[i]->setCurrentPosition(0);
+      steppers[i]->run();
+    }
+  }
+
   nextstep();
   float longestDuration = 0.0;
+  float accelleration = ACCEL;
   for( i = 0; i < totalsteppers; i++) {
-    long distanceToGo = pattern[step][i]*255 - steppers[i]->currentPosition();
-    float duration = abs(distanceToGo)/MAXSPEED;
+    accelleration=steppers[i]->acceleration()+10.0;
+    steppers[i]->setAcceleration(accelleration);
+    distanceToGo[i] = pattern[step][i] - steppers[i]->currentPosition();
+    float duration = abs(distanceToGo[i])/MAXSPEED;
     if (duration > 0.0) {
       steppers[i]->enableOutputs();
     } else {
@@ -251,21 +265,23 @@ void loop() {
     }
     longestDuration = max(duration,longestDuration);
   }
+  snprintf(buffer,16,"ACCEL: %d  ", int(accelleration));
+  LogLine(buffer);
+
   if (longestDuration > 0.0) {
     moresteps = true;
     for( i = 0; i < totalsteppers; i++) {
-      long distanceToGo = pattern[step][i]*255 - steppers[i]->currentPosition();
-      if (distanceToGo != 0) {
-        float speed = distanceToGo / longestDuration;
+      if (distanceToGo[i] != 0) {
+        float speed = distanceToGo[i] / longestDuration;
         steppers[i]->setSpeed(speed);
-        steppers[i]->moveTo(pattern[step][i]*255); //reset's speed
+        steppers[i]->moveTo(pattern[step][i]); //reset's speed
       } else {
  //       steppers[i]->disableOutputs();
       }
     }
   }
 }
-
+/*
 void PD_ISR () { // ISR to be get called on power-down state
 //    powerDown();
 }
@@ -335,3 +351,4 @@ long readVcc() {
   result = 1125300L / result; // Calculate Vcc (in mV); 1125300 = 1.1*1023*1000
   return result; // Vcc in millivolts
 }
+*/
