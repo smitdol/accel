@@ -16,7 +16,7 @@ const int LCD_ROWS = 2;
 // Set the maximum steps per second, above 1000 is unreliable according to library
 #define SPEED 1024.0
 #define MAXSPEED 1024.0
-#define ACCEL 200.0
+#define ACCEL 600.0
 #define HOEK 128 //2048*22.5/360 = 128
 #define A -28  // mechanische 0/aanloop/motor op die positie wodt op 0 gezet
 #define B HOEK
@@ -69,9 +69,25 @@ int motornumber = totalsteppers;
 
 // 1019 = 2038/2, where 2038 is not 2048 
 
-#define totalsteps 2
+#define totalsteps 18
 volatile long pattern[totalsteps][totalsteppers] = {
  // 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15 
+  { I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I},
+  { J, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I},
+  { I, J, I, I, I, I, I, I, I, I, I, I, I, I, I, I},
+  { J, I, J, I, I, I, I, I, I, I, I, I, I, I, I, I},
+  { I, J, I, J, I, I, I, I, I, I, I, I, I, I, I, I},
+  { J, I, J, I, J, I, I, I, I, I, I, I, I, I, I, I},
+  { I, J, I, J, I, J, I, I, I, I, I, I, I, I, I, I},
+  { J, I, J, I, J, I, J, I, I, I, I, I, I, I, I, I},
+  { I, J, I, J, I, J, I, J, I, I, I, I, I, I, I, I},
+  { J, I, J, I, J, I, J, I, J, I, I, I, I, I, I, I},
+  { I, J, I, J, I, J, I, J, I, J, I, I, I, I, I, I},
+  { J, I, J, I, J, I, J, I, J, I, J, I, I, I, I, I},
+  { I, J, I, J, I, J, I, J, I, J, I, J, I, I, I, I},
+  { J, I, J, I, J, I, J, I, J, I, J, I, J, I, I, I},
+  { I, J, I, J, I, J, I, J, I, J, I, J, I, J, I, I},
+  { J, I, J, I, J, I, J, I, J, I, J, I, J, I, J, I},
   { I, J, I, J, I, J, I, J, I, J, I, J, I, J, I, J},
   { J, I, J, I, J, I, J, I, J, I, J, I, J, I, J, I},
   /* 
@@ -233,40 +249,38 @@ void CheckSerial() {
 void loop() {
   CheckSerial();
   if (moresteps) {
-    moresteps = false;
+    moresteps=false;
     for( i = 0; i < totalsteppers; i++) {
-      if (steppers[i]->run()) {
-        moresteps = true; // loop again
+      if ( steppers[i]->run())
+      {
+        moresteps=true;
       }
     }
     return; // loop again
   }
 
+  nextstep();
+
+  float longestDuration = 0.0;
   for( i = 0; i < totalsteppers; i++) {
-    if (A == steppers[i]->currentPosition()) {
+    long currentpos = steppers[i]->currentPosition();
+    if (A == currentpos) {
       // home again
       steppers[i]->setCurrentPosition(0);
       steppers[i]->run();
+      currentpos = 0;
     }
-  }
-
-  nextstep();
-  float longestDuration = 0.0;
-  float accelleration = ACCEL;
-  for( i = 0; i < totalsteppers; i++) {
-    accelleration=steppers[i]->acceleration()+10.0;
-    steppers[i]->setAcceleration(accelleration);
-    distanceToGo[i] = pattern[step][i] - steppers[i]->currentPosition();
-    float duration = abs(distanceToGo[i])/MAXSPEED;
-    if (duration > 0.0) {
+    distanceToGo[i] = pattern[step][i] - currentpos;
+    if (distanceToGo[i] !=  0) {
+      float duration = abs(distanceToGo[i])/MAXSPEED;
+      longestDuration = max(duration,longestDuration);
       steppers[i]->enableOutputs();
     } else {
       steppers[i]->disableOutputs();
     }
-    longestDuration = max(duration,longestDuration);
   }
-  snprintf(buffer,16,"ACCEL: %d  ", int(accelleration));
-  LogLine(buffer);
+//  snprintf(buffer,16,"step: %d  ", step);
+//  LogLine(buffer);
 
   if (longestDuration > 0.0) {
     moresteps = true;
@@ -275,8 +289,8 @@ void loop() {
         float speed = distanceToGo[i] / longestDuration;
         steppers[i]->setSpeed(speed);
         steppers[i]->moveTo(pattern[step][i]); //reset's speed
-      } else {
- //       steppers[i]->disableOutputs();
+//    } else {
+//      steppers[i]->disableOutputs();
       }
     }
   }

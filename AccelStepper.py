@@ -249,13 +249,13 @@ stepper.log("setMaxSpeed")
 stepper.move(-2048)
 stepper.log("move")
 while stepper.run() :
-    stepper.log("homing")
-
+    pass
+stepper.log("homing")
 stepper.setMaxSpeed(1024)
 stepper.log("setMaxSpeed")
 stepper.setSpeed(1024)
 stepper.log("setSpeed")
-stepper.setAcceleration(200)
+stepper.setAcceleration(600)
 stepper.log("setAcceleration")
 stepper.setCurrentPosition(0)
 stepper.log("setCurrentPosition")
