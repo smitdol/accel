@@ -14,8 +14,8 @@ const int LCD_COLS = 16;
 const int LCD_ROWS = 2;
 
 // Set the maximum steps per second, above 1000 is unreliable according to library
-#define SPEED 1024.0
-#define MAXSPEED 1024.0
+#define SPEED 2048.0
+#define MAXSPEED 2048.0
 #define ACCEL 600.0
 #define HOEK 128 //2048*22.5/360 = 128
 #define A -28  // mechanische 0/aanloop/motor op die positie wodt op 0 gezet
@@ -23,6 +23,9 @@ const int LCD_ROWS = 2;
 #define C B+HOEK
 #define D C+HOEK
 #define E D+HOEK
+#ifdef F
+#undef F
+#endif
 #define F E+HOEK
 #define G F+HOEK
 #define H G+HOEK
@@ -37,7 +40,7 @@ AccelStepper stepper0(FULLSTEP,  2,  4,  3,  5); // was HALFSTEP, which doubles 
 AccelStepper stepper1(FULLSTEP,  6,  8,  7,  9);
 AccelStepper stepper2(FULLSTEP, 10, 12, 11, 13);
 AccelStepper stepper3(FULLSTEP, 14, 16, 15, 17);
-AccelStepper stepper4(FULLSTEP, 18, 20, 19, 21); //Tx1,SDA,RX1,SCL
+//AccelStepper stepper4(FULLSTEP, 18, 20, 19, 21); //Tx1,SDA,RX1,SCL
 AccelStepper stepper5(FULLSTEP, 22, 24, 23, 25);
 AccelStepper stepper6(FULLSTEP, 26, 28, 27, 29);
 AccelStepper stepper7(FULLSTEP, 30, 32, 31, 33);
@@ -49,7 +52,7 @@ AccelStepper stepperC(FULLSTEP, 50, 52, 51, 53);
 AccelStepper stepperD(FULLSTEP, 54, 56, 55, 57);
 AccelStepper stepperE(FULLSTEP, 58, 60, 59, 61);
 AccelStepper stepperF(FULLSTEP, 62, 64, 63, 65);
-//AccelStepper stepperF(FULLSTEP, 66, 68, 67, 69);
+AccelStepper stepper4(FULLSTEP, 66, 68, 67, 69);
 
 AccelStepper* steppers[totalsteppers];
 
@@ -58,11 +61,9 @@ long distanceToGo[totalsteppers];
 bool moresteps;
 bool targetset;
 bool written = false;
-unsigned i;
-int eeAdress;
-long position;
 int step;
 int motornumber = totalsteppers;
+ unsigned long time;
 //https://arduino.stackexchange.com/questions/16352/measure-vcc-using-1-1v-bandgap ?
 //https://www.codrey.com/arduino-projects/arduino-power-down-auto-save/
 //int PD_PIN =2; // D2 used for  power-down detection (INT.0)
@@ -170,16 +171,15 @@ void setup() {
   steppers[14] = &stepperE;
   steppers[15] = &stepperF;
 
-  for(i = 0; i < totalsteppers; i++){
+  for(uint8_t i = 0; i < totalsteppers; i++){
     steppers[i]->disableOutputs();
   }
-  for(i = 0; i < totalsteppers; i+=8){
-    home(i, 8);
-  }
+  home(0, 8);
+  home(8, 8);
   moresteps = false; //restorePositions(); // init next step or continue where left
   step=totalsteps-1; //++step%totalsteps = 0
 //  attachInterrupt(digitalPinToInterrupt(PD_PIN), PD_ISR,FALLING); // Set-up Interrupt Service Routine (ISR)
-  
+  time = micros();  
 }
 
 void nextstep() {
@@ -195,7 +195,6 @@ void home(unsigned i, unsigned j) {
     LogLine(buffer);
     return;
   }
-  unsigned step = 0;
   snprintf(buffer, 16, "%i - %i", i+1, i+j);
   LogLine(buffer);
   for (unsigned k = i; k < i+j; k++){
@@ -250,7 +249,7 @@ void loop() {
   CheckSerial();
   if (moresteps) {
     moresteps=false;
-    for( i = 0; i < totalsteppers; i++) {
+    for( uint8_t i = 0; i < totalsteppers; i++) {
       if ( steppers[i]->run())
       {
         moresteps=true;
@@ -258,11 +257,15 @@ void loop() {
     }
     return; // loop again
   }
-
+  unsigned long now = micros();
+  unsigned long delta = now - time;
+  snprintf(buffer,16,"time: %ld  ", delta);
+  LogLine(buffer);
+  time = now;
   nextstep();
 
-  float longestDuration = 0.0;
-  for( i = 0; i < totalsteppers; i++) {
+  long longestDistance = 0.0;
+  for( uint8_t i = 0; i < totalsteppers; i++) {
     long currentpos = steppers[i]->currentPosition();
     if (A == currentpos) {
       // home again
@@ -272,8 +275,7 @@ void loop() {
     }
     distanceToGo[i] = pattern[step][i] - currentpos;
     if (distanceToGo[i] !=  0) {
-      float duration = abs(distanceToGo[i])/MAXSPEED;
-      longestDuration = max(duration,longestDuration);
+      longestDistance = max(abs(distanceToGo[i]),longestDistance);
       steppers[i]->enableOutputs();
     } else {
       steppers[i]->disableOutputs();
@@ -282,11 +284,11 @@ void loop() {
 //  snprintf(buffer,16,"step: %d  ", step);
 //  LogLine(buffer);
 
-  if (longestDuration > 0.0) {
+  if (longestDistance > 0.0) {
     moresteps = true;
-    for( i = 0; i < totalsteppers; i++) {
+    for( uint8_t i = 0; i < totalsteppers; i++) {
       if (distanceToGo[i] != 0) {
-        float speed = distanceToGo[i] / longestDuration;
+        float speed = MAXSPEED*(distanceToGo[i] / longestDistance);
         steppers[i]->setSpeed(speed);
         steppers[i]->moveTo(pattern[step][i]); //reset's speed
 //    } else {
