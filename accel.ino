@@ -14,7 +14,7 @@ const int LCD_COLS = 16;
 const int LCD_ROWS = 2;
 
 // Set the maximum steps per second, above 1000 is unreliable according to library
-#define SPEED 2048.0
+#define SPEED 1024.0
 #define MAXSPEED 2048.0
 #define ACCEL 600.0
 #define HOEK 128 //2048*22.5/360 = 128
@@ -63,17 +63,19 @@ bool targetset;
 bool written = false;
 int step;
 int motornumber = totalsteppers;
- unsigned long time;
+unsigned long time;
+unsigned long now;
+unsigned long delta;
 //https://arduino.stackexchange.com/questions/16352/measure-vcc-using-1-1v-bandgap ?
 //https://www.codrey.com/arduino-projects/arduino-power-down-auto-save/
 //int PD_PIN =2; // D2 used for  power-down detection (INT.0)
 
 // 1019 = 2038/2, where 2038 is not 2048 
 
-#define totalsteps 18
+#define totalsteps 34
 volatile long pattern[totalsteps][totalsteppers] = {
  // 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15 
-  { I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I},
+  { I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I}, //0
   { J, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I},
   { I, J, I, I, I, I, I, I, I, I, I, I, I, I, I, I},
   { J, I, J, I, I, I, I, I, I, I, I, I, I, I, I, I},
@@ -90,26 +92,25 @@ volatile long pattern[totalsteps][totalsteppers] = {
   { I, J, I, J, I, J, I, J, I, J, I, J, I, J, I, I},
   { J, I, J, I, J, I, J, I, J, I, J, I, J, I, J, I},
   { I, J, I, J, I, J, I, J, I, J, I, J, I, J, I, J},
-  { J, I, J, I, J, I, J, I, J, I, J, I, J, I, J, I},
-  /* 
-  { I, H, A, A, A, A, A, A, A, A, A, A, A, A, A, A},
+  { J, I, J, I, J, I, J, I, J, I, J, I, J, I, J, I}, //17
+
+  { I, H, A, A, A, A, A, A, A, A, A, A, A, A, A, A}, //18
   { J, A, F, C, B, A, A, A, A, A, A, A, A, A, A, A},
-  { I, H, F, C, B, B, B, B, B, B, B, B, A, A, A, A},
-  { J, A, B, F, B, B, B, B, B, B, B, B, B, B, B, B},
-  { I, H, B, F, B, D, B, D, B, D, B, D, B, D, B, D},
-  { J, A, C, D, C, D, C, D, C, D, C, D, C, D, C, D},
-  { I, H, C, D, E, E, C, D, E, E, C, D, E, E, C, D},
-  { J, A, E, E, E, E, E, E, E, E, E, E, E, E, E, E},
-  { I, H, E, E, A, A, A, A, A, A, A, A, E, E, E, E},
-  { J, A, A, A, A, A, A, A, A, H, H, H, A, A, A, A},
-  { I, H, G, H, F, A, H, H, H, H, H, H, A, A, A, A},
-  { J, A, G, A, F, A, A, A, A, A, A, H, A, A, A, A},
-  { I, H, G, A, F, A, A, A, A, A, B, A, E, E, E, E},
-  { J, A, B, C, D, E, E, D, A, A, B, A, E, E, E, E},
-  { I, H, B, B, C, D, D, C, B, A, A, A, E, E, E, E},
-  { J, A, B, B, C, D, D, C, B, A, A, A, E, C, C, F},
-  { I, H, B, B, A, A, A, A, A, A, A, A, A, C, C, F},
-  */
+  { H, H, F, C, B, B, B, B, B, B, B, B, A, A, A, A},
+  { J, B, B, F, B, B, B, B, B, B, B, B, B, B, B, B},
+  { G, H, B, F, B, D, B, D, B, D, B, D, B, D, B, D},
+  { J, C, C, D, C, D, C, D, C, D, C, D, C, D, C, D},
+  { F, H, C, D, E, E, C, D, E, E, C, D, E, E, C, D},
+  { J, D, E, E, E, E, E, E, E, E, E, E, E, E, E, E},
+  { E, H, E, E, A, A, A, A, A, A, A, A, E, E, E, E},
+  { J, E, A, A, A, A, A, A, A, H, H, H, A, A, A, A},
+  { D, H, G, H, F, A, H, H, H, H, H, H, A, A, A, A},
+  { J, F, G, A, F, A, A, A, A, A, A, H, A, A, A, A},
+  { C, H, G, A, F, A, A, A, A, A, B, A, E, E, E, E},
+  { J, G, B, C, D, E, E, D, A, A, B, A, E, E, E, E},
+  { B, H, B, B, C, D, D, C, B, A, A, A, E, E, E, E},
+  { J, I, B, B, C, D, D, C, B, A, A, A, E, C, C, F},
+//  { I, H, B, B, A, A, A, A, A, A, A, A, A, C, C, F}, //34
   };
 
 char row1[17];
@@ -214,11 +215,11 @@ void home(unsigned i, unsigned j) {
     }
   } while (moresteps);
   for (unsigned k = i; k < i+j; k++){
-    steppers[k]->setMaxSpeed(MAXSPEED);
     steppers[k]->setSpeed(SPEED);
     steppers[k]->setAcceleration(ACCEL);
     steppers[k]->setCurrentPosition(0);
-    steppers[k]->run();
+    steppers[k]->setMaxSpeed(MAXSPEED);
+    //steppers[k]->run();
     steppers[k]->disableOutputs();
   }
   LogLine("Completed HOMING");
@@ -249,16 +250,18 @@ void loop() {
   CheckSerial();
   if (moresteps) {
     moresteps=false;
+
     for( uint8_t i = 0; i < totalsteppers; i++) {
       if ( steppers[i]->run())
       {
         moresteps=true;
       }
     }
+
     return; // loop again
   }
-  unsigned long now = micros();
-  unsigned long delta = now - time;
+  now = micros();
+  delta = now - time;
   snprintf(buffer,16,"time: %ld  ", delta);
   LogLine(buffer);
   time = now;
