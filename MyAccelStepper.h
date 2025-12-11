@@ -3,27 +3,22 @@
 #define MyAccelStepper_h
 
 #include <AccelStepper.h>
-#include <Arduino.h>
+#include "digitalWriteFast.h"
 
 class MyAccelStepper : public AccelStepper
 {
 public:
-    MyAccelStepper(uint8_t interface = AccelStepper::FULL4WIRE, uint8_t pin1 = 2, uint8_t pin2 = 3, uint8_t pin3 = 4, uint8_t pin4 = 5, bool enable = true);
-    unsigned long  computeNewSpeed() override;
+    MyAccelStepper(const uint8_t pin1 , const uint8_t pin2, const uint8_t pin3, const uint8_t pin4, bool enable = true);
+    void setOutputPins(uint8_t mask) override;
+
 private:
-    /// The step counter for speed calculations
-    long _n;
+    uint8_t        _pin1;
+    uint8_t        _pin2;
+    uint8_t        _pin3;
+    uint8_t        _pin4;
 
-    /// Initial step size in microseconds
-    float _c0;
-
-    /// Last step size in microseconds
-    float _cn;
-
-    /// Min step size in microseconds based on maxSpeed
-    float _cmin; // at max speed
-
-    static long ccache[514];
+    /// Whether the _pins is inverted or not
+    uint8_t        _pinInverted[4];
 };
 
 #endif
