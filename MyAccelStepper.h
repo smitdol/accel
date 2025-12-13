@@ -3,7 +3,7 @@
 #define MyAccelStepper_h
 
 #include <AccelStepper.h>
-#include "digitalWriteFast.h"
+#include "Mapper.h"
 
 class MyAccelStepper : public AccelStepper
 {
@@ -12,13 +12,10 @@ public:
     void setOutputPins(uint8_t mask) override;
 
 private:
-    uint8_t        _pin1;
-    uint8_t        _pin2;
-    uint8_t        _pin3;
-    uint8_t        _pin4;
-
-    /// Whether the _pins is inverted or not
-    uint8_t        _pinInverted[4];
+  Mapper _portMapper1;
+  Mapper _portMapper2;
+  Mapper _portMapper3;
+  Mapper _portMapper4;
 };
 
 #endif
