@@ -79,26 +79,32 @@ void Mapper::begin()
   _bit = digitalPinToBitMask(_pin);
   _port = digitalPinToPort(_pin);
   _timer = digitalPinToTimer(_pin);
+  _out = portOutputRegister(_port);
+  _reg = portModeRegister(_port);
   if (_port != NOT_A_PIN) {
     if (_timer != NOT_ON_TIMER) turnOffPWM(_timer);
-    uint8_t oldSREG = SREG;
-    cli();
     enableOutput();//pinmode output
-    SREG = oldSREG;
   }
 }
 
 void Mapper::enableOutput()
 {
-  volatile uint8_t * reg = portModeRegister(_port);
-	*reg |= _bit; //pinmode output
+  uint8_t oldSREG = SREG;
+  cli();
+	*_reg |= _bit; //pinmode output
+  SREG = oldSREG;
 }
 
 
-void Mapper::setOutputPin(uint8_t val)
+void Mapper::setOutputPin(uint8_t bits, uint8_t bit)
 {
-  enableOutput();
-  volatile uint8_t * out = portOutputRegister(_port);
-  if ( val ) {*out != _bit;} else {*out &= ~_bit;} 
+	uint8_t oldSREG = SREG;
+	cli();
+	if ((bits & (1<<bit)) == LOW) {
+		*_out &= ~_bit;
+	} else {
+		*_out |= _bit;
+	}
+	SREG = oldSREG;
 }
 

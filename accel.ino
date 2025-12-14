@@ -177,7 +177,7 @@ void setup() {
   }
 
   for(uint8_t i = 0; i < totalsteppers; i++){
-    steppers[i]->enableOutputs();
+    steppers[i]->disableOutputs();
   }
   home(0, 8);
   home(8, 8);
