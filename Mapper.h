@@ -12,13 +12,15 @@
 class Mapper
 {
 public:
-    Mapper(const uint8_t pin);
-    void setOutputPin(uint8_t val);
-
+  Mapper(const uint8_t pin);
+  void begin();
+  void setOutputPin(uint8_t val);
+  void enableOutput();
 private:
+  uint8_t _pin;
   uint8_t _bit;
   uint8_t _timer;
-  volatile uint8_t *_out;
+  uint8_t _port;
 };
 
 #endif

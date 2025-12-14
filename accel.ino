@@ -1,6 +1,6 @@
 // https://lastminuteengineers.com/28byj48-stepper-motor-arduino-tutorial/
 // Include the AccelStepper Library (Mike McCauley)
-#include <AccelStepper.h>
+#include "MyAccelStepper.h"
 #define FULLSTEP 4
 //#include <EEPROM.h>
 
@@ -36,25 +36,25 @@ const int LCD_ROWS = 2;
 
 // Creates two instances
 // Pins entered in sequence IN1-IN3-IN2-IN4 for proper step sequence
-AccelStepper stepper0(FULLSTEP,  2,  4,  3,  5); //PE4/PE5/PG5/PE3
-AccelStepper stepper1(FULLSTEP,  6,  8,  7,  9); //PH3/PH5/PH4/PH6
-AccelStepper stepper2(FULLSTEP, 10, 12, 11, 13); //PB4/PB6/PB5/PB7
-AccelStepper stepper3(FULLSTEP, 14, 16, 15, 17); //PJ1/PH1/PJ0/PH0
+MyAccelStepper stepper0(FULLSTEP,  2,  4,  3,  5); //PE4/PE5/PG5/PE3
+MyAccelStepper stepper1(FULLSTEP,  6,  8,  7,  9); //PH3/PH5/PH4/PH6
+MyAccelStepper stepper2(FULLSTEP, 10, 12, 11, 13); //PB4/PB6/PB5/PB7
+MyAccelStepper stepper3(FULLSTEP, 14, 16, 15, 17); //PJ1/PH1/PJ0/PH0
 //AccelStepper stepper4(FULLSTEP, 18, 20, 19, 21); //Tx1,SDA,RX1,SCL //PD0-PD3
-AccelStepper stepper5(FULLSTEP, 22, 24, 23, 25); //PORTA
-AccelStepper stepper6(FULLSTEP, 26, 28, 27, 29); //PORTA
-AccelStepper stepper7(FULLSTEP, 30, 32, 31, 33); //PORTC
-AccelStepper stepper8(FULLSTEP, 34, 36, 35, 37); //PORTC
-AccelStepper stepper9(FULLSTEP, 38, 40, 39, 41);
-AccelStepper stepperA(FULLSTEP, 42, 44, 43, 45);
-AccelStepper stepperB(FULLSTEP, 46, 48, 47, 49);
-AccelStepper stepperC(FULLSTEP, 50, 52, 51, 53);
-AccelStepper stepperD(FULLSTEP, 54, 56, 55, 57); //PF0-3
-AccelStepper stepperE(FULLSTEP, 58, 60, 59, 61); //PF4-7
-AccelStepper stepperF(FULLSTEP, 62, 64, 63, 65); //PK0-3
-AccelStepper stepper4(FULLSTEP, 66, 68, 67, 69); //PK4-7
+MyAccelStepper stepper5(FULLSTEP, 22, 24, 23, 25); //PORTA
+MyAccelStepper stepper6(FULLSTEP, 26, 28, 27, 29); //PORTA
+MyAccelStepper stepper7(FULLSTEP, 30, 32, 31, 33); //PORTC
+MyAccelStepper stepper8(FULLSTEP, 34, 36, 35, 37); //PORTC
+MyAccelStepper stepper9(FULLSTEP, 38, 40, 39, 41);
+MyAccelStepper stepperA(FULLSTEP, 42, 44, 43, 45);
+MyAccelStepper stepperB(FULLSTEP, 46, 48, 47, 49);
+MyAccelStepper stepperC(FULLSTEP, 50, 52, 51, 53);
+MyAccelStepper stepperD(FULLSTEP, 54, 56, 55, 57); //PF0-3
+MyAccelStepper stepperE(FULLSTEP, 58, 60, 59, 61); //PF4-7
+MyAccelStepper stepperF(FULLSTEP, 62, 64, 63, 65); //PK0-3
+MyAccelStepper stepper4(FULLSTEP, 66, 68, 67, 69); //PK4-7
 
-AccelStepper* steppers[totalsteppers];
+MyAccelStepper* steppers[totalsteppers];
 
 long positions[totalsteppers+1]; //1 extra is used in EEPROM 
 long distanceToGo[totalsteppers];
@@ -173,7 +173,11 @@ void setup() {
   steppers[15] = &stepperF;
 
   for(uint8_t i = 0; i < totalsteppers; i++){
-    steppers[i]->disableOutputs();
+    steppers[i]->begin();
+  }
+
+  for(uint8_t i = 0; i < totalsteppers; i++){
+    steppers[i]->enableOutputs();
   }
   home(0, 8);
   home(8, 8);
