@@ -48,11 +48,11 @@ MyAccelStepper stepper8(FULLSTEP, 34, 36, 35, 37); //PORTC
 MyAccelStepper stepper9(FULLSTEP, 38, 40, 39, 41);
 MyAccelStepper stepperA(FULLSTEP, 42, 44, 43, 45);
 MyAccelStepper stepperB(FULLSTEP, 46, 48, 47, 49);
-MyAccelStepper stepperC(FULLSTEP, 50, 52, 51, 53);
-MyAccelStepper stepperD(FULLSTEP, 54, 56, 55, 57); //PF0-3
-MyAccelStepper stepperE(FULLSTEP, 58, 60, 59, 61); //PF4-7
-MyAccelStepper stepperF(FULLSTEP, 62, 64, 63, 65); //PK0-3
-MyAccelStepper stepper4(FULLSTEP, 66, 68, 67, 69); //PK4-7
+MyAccelStepper stepperC(FULLSTEP, PIN_SPI_MISO, PIN_SPI_SCK, PIN_SPI_MOSI, PIN_SPI_SS);
+MyAccelStepper stepperD(FULLSTEP, A0, A2, A1, A3); //PF0-3
+MyAccelStepper stepperE(FULLSTEP, A4, A6, A5, A7); //PF4-7
+MyAccelStepper stepperF(FULLSTEP, A8, A10, A9, A11); //PK0-3
+MyAccelStepper stepper4(FULLSTEP, A12, A14, A13, A15); //PK4-7
 
 MyAccelStepper* steppers[totalsteppers];
 

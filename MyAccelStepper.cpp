@@ -18,7 +18,7 @@ inline void fastDigitalWrite(uint8_t pin, uint8_t val) {
 
 //https://forum.arduino.cc/t/digitalwritefast-digitalreadfast-pinmodefast-etc/47037/46
 //https://forum.arduino.cc/t/class-and-constructor/653134/11
-MyAccelStepper::MyAccelStepper(uint8_t interface, uint8_t pin1, uint8_t pin2, uint8_t pin3, uint8_t pin4, bool enable):
+MyAccelStepper::MyAccelStepper(const uint8_t interface, const uint8_t pin1, const uint8_t pin2, const uint8_t pin3, const uint8_t pin4, bool enable):
 AccelStepper(interface, pin1, pin2, pin3, pin4, enable),
 _portMapper1(Mapper(pin1)),
 _portMapper2(Mapper(pin2)),
