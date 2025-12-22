@@ -1,15 +1,14 @@
 
-#ifndef MyAccelStepper_h
-#define MyAccelStepper_h
+#ifndef MyAccelStepper1_h
+#define MyAccelStepper1_h
 #include "IMyAccelStepper.h"
 #include <AccelStepper.h>
-#include "Mapper.h"
-
-class MyAccelStepper : public AccelStepper, public IMyAccelStepper
+class MyAccelStepper1 : public AccelStepper, public IMyAccelStepper
 {
 public:
-    virtual ~MyAccelStepper() = default;
-    MyAccelStepper(uint8_t interface, uint8_t pin1, uint8_t pin2, uint8_t pin3, uint8_t pin4, bool enable = true);
+    virtual ~MyAccelStepper1() = default;
+    MyAccelStepper1(const uint8_t interface, const uint8_t digitalPin, bool reverse = false, bool enable = true);
+
     void begin() override;
     void setOutputPins(uint8_t mask) override;
     void disableOutputs() override;
@@ -20,16 +19,17 @@ public:
     void setMaxSpeed(float speed) override; 
     void move(long relative) override;
     void setSpeed(float speed) override;
-
     boolean run() override;
     long currentPosition() override;
-    void moveTo(long absolute) override; 
+    void moveTo(long absolute) override;  
 private:
+  uint8_t _port;
+  uint8_t _digitalPin;
+  uint8_t _mask;
+  volatile uint8_t *_out;
+  volatile uint8_t *_reg;
+  bool _reverse;
+  uint8_t _bits[4];
 
-  Mapper _portMapper1;
-  Mapper _portMapper2;
-  Mapper _portMapper3;
-  Mapper _portMapper4;
 };
-
 #endif

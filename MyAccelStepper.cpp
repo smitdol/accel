@@ -2,24 +2,10 @@
 #include "Mapper.h"
 #include <Arduino.h>
 
-//https://synthiam.com/Community/Questions/Improving-Digital-Write-Efficiency-Arduino-23032
-/*
-inline void fastDigitalWrite(uint8_t pin, uint8_t val) {
-  uint8_t bit = digitalPinToBitMask(pin);/home/sofie/Downloads/projects/Arduino/gijs/accel/Mapper.h
-  uint8_t port = digitalPinToPort(pin);
-  volatile uint8_t *out = portOutputRegister(port);
-  if (val) {
-    *out |= bit;
-  } else {
-    *out &= ~bit;
-  }
-}
-*/
-
 //https://forum.arduino.cc/t/digitalwritefast-digitalreadfast-pinmodefast-etc/47037/46
 //https://forum.arduino.cc/t/class-and-constructor/653134/11
-MyAccelStepper::MyAccelStepper(const uint8_t interface, const uint8_t pin1, const uint8_t pin2, const uint8_t pin3, const uint8_t pin4, bool enable):
-AccelStepper(interface, pin1, pin2, pin3, pin4, enable),
+MyAccelStepper::MyAccelStepper(const uint8_t interface, const uint8_t pin1, const uint8_t pin2, const uint8_t pin3, const uint8_t pin4, bool enable)
+: AccelStepper(interface, pin1, pin2, pin3, pin4, enable),
 _portMapper1(Mapper(pin1)),
 _portMapper2(Mapper(pin2)),
 _portMapper3(Mapper(pin3)),
@@ -60,3 +46,11 @@ void MyAccelStepper::setOutputPins(uint8_t bits)
   _portMapper4.setOutputPin(bits, 3);
  
 }
+void MyAccelStepper::setCurrentPosition(long position) {AccelStepper::setCurrentPosition(position);}
+void MyAccelStepper::setAcceleration(float accel) {AccelStepper::setAcceleration(accel);}
+void MyAccelStepper::setMaxSpeed(float speed) {AccelStepper::setMaxSpeed(speed);}
+void MyAccelStepper::move(long relative) {AccelStepper::move(relative);}
+void MyAccelStepper::setSpeed(float speed) {AccelStepper::setSpeed(speed);}
+boolean MyAccelStepper::run() { return AccelStepper::run();}
+long MyAccelStepper::currentPosition() { return AccelStepper::currentPosition();}
+void MyAccelStepper::moveTo(long absolute) {AccelStepper::moveTo(absolute);}
