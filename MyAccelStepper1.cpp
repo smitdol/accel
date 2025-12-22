@@ -73,9 +73,14 @@ static void turnOffPWM(uint8_t timer)
 MyAccelStepper1::MyAccelStepper1(const uint8_t interface, const uint8_t digitalPin, bool reverse, bool enable)
 : AccelStepper(interface, digitalPin, digitalPin+1, digitalPin+2, digitalPin+3, enable),
 _digitalPin(digitalPin),
-_reverse(reverse),
-_mask(0)
+_mask(0),
+_shiftBits(0)
 {
+  if (reverse) {
+    _direction = -1;
+  } else {
+    _direction = +1;
+  }
 };
 
 void MyAccelStepper1::begin(){
@@ -91,6 +96,13 @@ void MyAccelStepper1::begin(){
 
     if (timer != NOT_ON_TIMER) turnOffPWM(timer);
     _mask |= _bits[i];
+  }
+  switch (_mask) {
+    case 0b11110000: _shiftBits = 4; break;
+    case 0b01111000: _shiftBits = 3; break;
+    case 0b00111100: _shiftBits = 2; break;
+    case 0b00011110: _shiftBits = 1; break;
+    case 0b00001111: _shiftBits = 0; break;
   }
   enableOutputs();//pinmode output
 
@@ -111,10 +123,7 @@ void MyAccelStepper1::enableOutputs()
 
 void MyAccelStepper1::setOutputPins(uint8_t bits)
 {
-  uint8_t j = bits;
-  if (_mask > 15) {
-    j = (bits << 4);
-  }
+  uint8_t j = (bits << _shiftBits);
 	uint8_t oldSREG = SREG;
 	cli();
 	*_out |= j;
@@ -123,6 +132,7 @@ void MyAccelStepper1::setOutputPins(uint8_t bits)
   /*
                     *out = ???????? ????????
                 mask       11110000 00001111
+                bits       0110         0110
                        j = 01100000 00000110
    =>          *out |  j = ?11????? ?????11?
 
@@ -135,11 +145,11 @@ void MyAccelStepper1::setOutputPins(uint8_t bits)
   SREG = oldSREG;
   
 }
-void MyAccelStepper1::setCurrentPosition(long position) {AccelStepper::setCurrentPosition(position);}
+void MyAccelStepper1::setCurrentPosition(long position) {AccelStepper::setCurrentPosition(_direction*position);}
 void MyAccelStepper1::setAcceleration(float accel) {AccelStepper::setAcceleration(accel);}
 void MyAccelStepper1::setMaxSpeed(float speed) {AccelStepper::setMaxSpeed(speed);}
-void MyAccelStepper1::move(long relative) {AccelStepper::move(relative);}
+void MyAccelStepper1::move(long relative) {AccelStepper::move(_direction*relative);}
 void MyAccelStepper1::setSpeed(float speed) {AccelStepper::setSpeed(speed);}
 boolean MyAccelStepper1::run() { return AccelStepper::run();}
-long MyAccelStepper1::currentPosition() { return AccelStepper::currentPosition();}
-void MyAccelStepper1::moveTo(long absolute) {AccelStepper::moveTo(absolute);}
+long MyAccelStepper1::currentPosition() { return _direction* AccelStepper::currentPosition();}
+void MyAccelStepper1::moveTo(long absolute) {AccelStepper::moveTo(_direction*absolute);}

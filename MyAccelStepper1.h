@@ -28,8 +28,9 @@ private:
   uint8_t _mask;
   volatile uint8_t *_out;
   volatile uint8_t *_reg;
-  bool _reverse;
+  int8_t _direction;
   uint8_t _bits[4];
+  uint8_t _shiftBits; // upper part of the Port
 
 };
 #endif

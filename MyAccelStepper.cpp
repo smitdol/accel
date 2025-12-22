@@ -4,13 +4,20 @@
 
 //https://forum.arduino.cc/t/digitalwritefast-digitalreadfast-pinmodefast-etc/47037/46
 //https://forum.arduino.cc/t/class-and-constructor/653134/11
-MyAccelStepper::MyAccelStepper(const uint8_t interface, const uint8_t pin1, const uint8_t pin2, const uint8_t pin3, const uint8_t pin4, bool enable)
+MyAccelStepper::MyAccelStepper(const uint8_t interface, const uint8_t pin1, const uint8_t pin2, const uint8_t pin3, const uint8_t pin4, bool reverse, bool enable)
 : AccelStepper(interface, pin1, pin2, pin3, pin4, enable),
 _portMapper1(Mapper(pin1)),
 _portMapper2(Mapper(pin2)),
 _portMapper3(Mapper(pin3)),
 _portMapper4(Mapper(pin4))
-{};
+{
+  if (reverse) {
+    _direction = -1;
+  } else {
+    _direction = +1;
+  }
+
+};
 
 void MyAccelStepper::begin(){
 
@@ -46,11 +53,11 @@ void MyAccelStepper::setOutputPins(uint8_t bits)
   _portMapper4.setOutputPin(bits, 3);
  
 }
-void MyAccelStepper::setCurrentPosition(long position) {AccelStepper::setCurrentPosition(position);}
+void MyAccelStepper::setCurrentPosition(long position) {AccelStepper::setCurrentPosition(_direction*position);}
 void MyAccelStepper::setAcceleration(float accel) {AccelStepper::setAcceleration(accel);}
 void MyAccelStepper::setMaxSpeed(float speed) {AccelStepper::setMaxSpeed(speed);}
-void MyAccelStepper::move(long relative) {AccelStepper::move(relative);}
+void MyAccelStepper::move(long relative) {AccelStepper::move(_direction*relative);}
 void MyAccelStepper::setSpeed(float speed) {AccelStepper::setSpeed(speed);}
 boolean MyAccelStepper::run() { return AccelStepper::run();}
-long MyAccelStepper::currentPosition() { return AccelStepper::currentPosition();}
-void MyAccelStepper::moveTo(long absolute) {AccelStepper::moveTo(absolute);}
+long MyAccelStepper::currentPosition() { return _direction*AccelStepper::currentPosition();}
+void MyAccelStepper::moveTo(long absolute) {AccelStepper::moveTo(_direction*absolute);}

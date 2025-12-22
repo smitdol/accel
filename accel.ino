@@ -19,7 +19,7 @@ const int LCD_ROWS = 2;
 #define MAXSPEED 2048.0
 #define ACCEL 600.0
 #define HOEK 128 //2048*22.5/360 = 128
-#define A -28  // mechanische 0/aanloop/motor op die positie wodt op 0 gezet
+#define A -28  // mechanische 0/aanloop/motor op die positie wordt op 0 gezet
 #define B HOEK
 #define C B+HOEK
 #define D C+HOEK
@@ -35,33 +35,22 @@ const int LCD_ROWS = 2;
 
 #define totalsteppers 16
 
-// Creates two instances
 // Pins entered in sequence IN1-IN3-IN2-IN4 for proper step sequence
-MyAccelStepper stepper0(FULLSTEP,  2,  4,  3,  5); //PE4/PE5/PG5/PE3
-MyAccelStepper stepper1(FULLSTEP,  6,  8,  7,  9); //PH3/PH5/PH4/PH6
-MyAccelStepper stepper2(FULLSTEP, 10, 12, 11, 13); //PB4/PB6/PB5/PB7
-MyAccelStepper stepper3(FULLSTEP, 14, 16, 15, 17); //PJ1/PH1/PJ0/PH0
+MyAccelStepper  stepper0(FULLSTEP,  2,  4,  3,  5); //PE4/PE5/PG5/PE3
+MyAccelStepper  stepper1(FULLSTEP, 6, 8, 7, 9); //PH3/PH5/PH4/PH6
+MyAccelStepper1 stepper2(FULLSTEP, 10); //PB4-7
+MyAccelStepper  stepper3(FULLSTEP, 14, 16, 15, 17); //PJ1/PH1/PJ0/PH0
 //AccelStepper stepper4(FULLSTEP, 18, 20, 19, 21); //Tx1,SDA,RX1,SCL //PD0-PD3
-MyAccelStepper stepper4(FULLSTEP, 22, 24, 23, 25); //PORTA PA0 PA2 PA1 PA3
-//MyAccelStepper stepper5(FULLSTEP, 26, 28, 27, 29); //PORTA PA4 PA6 PA5 PA7
-//MyAccelStepper1 stepper4(FULLSTEP, PORTA, 0, 22); //22, 24, 23, 25
-MyAccelStepper1 stepper5(FULLSTEP, 26); //26, 28, 27, 29
-//MyAccelStepper stepper6(FULLSTEP, 30, 32, 31, 33); //PORTC PC7, PC5, PC6, PC4
-//MyAccelStepper stepper7(FULLSTEP, 34, 36, 35, 37); //PORTC PC3, PC1, PC2, PC0
-MyAccelStepper1 stepper6(FULLSTEP, 30); //PORTC PC7, PC5, PC6, PC4
-MyAccelStepper1 stepper7(FULLSTEP, 34); //PORTC PC3, PC1, PC2, PC0
-MyAccelStepper stepper8(FULLSTEP, 38, 40, 39, 41);
-//MyAccelStepper stepper9(FULLSTEP, 42, 44, 43, 45); // PORTL, PL7, PL5, PL6, PL4
-//MyAccelStepper stepperA(FULLSTEP, 46, 48, 47, 49); // PORTL PL3, PL1 PL2, PL0
-MyAccelStepper1 stepper9(FULLSTEP, 42); // PORTL, PL7, PL5, PL6, PL4
-MyAccelStepper1 stepperA(FULLSTEP, 46); // PORTL PL3, PL1 PL2, PL0
-MyAccelStepper stepperB(FULLSTEP, PIN_SPI_MISO, PIN_SPI_SCK, PIN_SPI_MOSI, PIN_SPI_SS);
-//MyAccelStepper stepperC(FULLSTEP, A0, A2, A1, A3); //PF0-3
-//MyAccelStepper stepperD(FULLSTEP, A4, A6, A5, A7); //PF4-7
+MyAccelStepper1 stepper4(FULLSTEP, 22); //PA0 22, 24, 23, 25
+MyAccelStepper1 stepper5(FULLSTEP, 26); //PA4 26, 28, 27, 29
+MyAccelStepper1 stepper6(FULLSTEP, 30); //PC7, PC5, PC6, PC4
+MyAccelStepper1 stepper7(FULLSTEP, 34); //PC3, PC1, PC2, PC0
+MyAccelStepper  stepper8(FULLSTEP, 38, 40, 39, 41); //PD7, PG1, PG2, PG0
+MyAccelStepper1 stepper9(FULLSTEP, 42); //PL7, PL5, PL6, PL4
+MyAccelStepper1 stepperA(FULLSTEP, 46); //PL3, PL1 PL2, PL0
+MyAccelStepper1 stepperB(FULLSTEP, 50); //PB0-3
 MyAccelStepper1 stepperC(FULLSTEP, 54); //PF0-3
 MyAccelStepper1 stepperD(FULLSTEP, 58); //PF4-7
-//MyAccelStepper stepperE(FULLSTEP, A8, A10, A9, A11); //PK0-3
-//MyAccelStepper stepperF(FULLSTEP, A12, A14, A13, A15); //PK4-7
 MyAccelStepper1 stepperE(FULLSTEP, 62); //PK0-3
 MyAccelStepper1 stepperF(FULLSTEP, 66); //PK4-7
 
@@ -216,8 +205,8 @@ void home(unsigned i, unsigned j) {
   for (unsigned k = i; k < i+j; k++){
     steppers[k]->enableOutputs();
     steppers[k]->setCurrentPosition(0);
-    steppers[k]->setAcceleration(100); //defining some low acceleration
-    steppers[k]->setMaxSpeed(100); //set speed, 100 for test purposes
+    steppers[k]->setAcceleration(ACCEL); //defining some low acceleration
+    steppers[k]->setMaxSpeed(MAXSPEED); //set speed, 100 for test purposes
     steppers[k]->move(-2048); ////set distance - negative value flips the direction, 2048 > 2038 
   }
   //snprintf(buffer, 16, "Moving to -2048");LogLine(buffer);

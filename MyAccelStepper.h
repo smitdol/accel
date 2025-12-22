@@ -9,7 +9,7 @@ class MyAccelStepper : public AccelStepper, public IMyAccelStepper
 {
 public:
     virtual ~MyAccelStepper() = default;
-    MyAccelStepper(uint8_t interface, uint8_t pin1, uint8_t pin2, uint8_t pin3, uint8_t pin4, bool enable = true);
+    MyAccelStepper(uint8_t interface, uint8_t pin1, uint8_t pin2, uint8_t pin3, uint8_t pin4, bool reverse = false, bool enable = true);
     void begin() override;
     void setOutputPins(uint8_t mask) override;
     void disableOutputs() override;
@@ -30,6 +30,7 @@ private:
   Mapper _portMapper2;
   Mapper _portMapper3;
   Mapper _portMapper4;
+  int8_t _direction;
 };
 
 #endif
