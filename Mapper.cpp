@@ -107,4 +107,3 @@ void Mapper::setOutputPin(uint8_t bits, uint8_t bit)
 	}
 	SREG = oldSREG;
 }
-

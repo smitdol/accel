@@ -84,7 +84,6 @@ _shiftBits(0)
 };
 
 void MyAccelStepper1::begin(){
-
   _port = digitalPinToPort(_digitalPin);
   _out = portOutputRegister(_port);
   _reg = portModeRegister(_port);
@@ -92,10 +91,8 @@ void MyAccelStepper1::begin(){
   for (uint8_t i = 0; i< 4; i++)
   {
     timer = digitalPinToTimer(_digitalPin+i);
-    _bits[i] = digitalPinToBitMask(_digitalPin+i);
-
     if (timer != NOT_ON_TIMER) turnOffPWM(timer);
-    _mask |= _bits[i];
+    _mask |= digitalPinToBitMask(_digitalPin+i);
   }
   switch (_mask) {
     case 0b11110000: _shiftBits = 4; break;
@@ -103,9 +100,10 @@ void MyAccelStepper1::begin(){
     case 0b00111100: _shiftBits = 2; break;
     case 0b00011110: _shiftBits = 1; break;
     case 0b00001111: _shiftBits = 0; break;
+    default: _shiftBits = 0; break;
   }
+  _notMask = ~_mask;
   enableOutputs();//pinmode output
-
 }
 
 void MyAccelStepper1::disableOutputs() {
@@ -118,7 +116,6 @@ void MyAccelStepper1::enableOutputs()
   cli();
 	*_reg |= _mask; //pinmode output
   SREG = oldSREG;
-  
 }
 
 void MyAccelStepper1::setOutputPins(uint8_t bits)
@@ -126,23 +123,25 @@ void MyAccelStepper1::setOutputPins(uint8_t bits)
   uint8_t j = (bits << _shiftBits);
 	uint8_t oldSREG = SREG;
 	cli();
+	*_out &= (_notMask | j);
 	*_out |= j;
-	*_out &= ~( _mask & ~j);
-
+  SREG = oldSREG;
   /*
-                    *out = ???????? ????????
-                mask       11110000 00001111
-                bits       0110         0110
-                       j = 01100000 00000110
-   =>          *out |  j = ?11????? ?????11?
+                    *out = ???????? ???????? ????????
+                mask       11110000 00001111 01111000
+                bits       0110         0110  0110
+                       j = 01100000 00000110 00110000
+   =>          *out |  j = ?11????? ?????11? ??11????
 
-   =>                 ~j = 10011111 11111001
-   =>          mask & ~j = 10010000 00001001
-   ->        ~(mask & ~) = 01101111 11110110
-   -> *out & ~(mask& ~j) = 0??0???? ????0??0
+            notMask        00001111 11110000 10000111
+   =>                 ~j = 10011111 11111001 11001111
+   =>          mask & ~j = 10010000 00001001 01001000
+   ->        ~(mask & ~J)= 01101111 11110110 10110111
+            _notMask | j = 01101111 11110110 10110111
+    *out & (_notMask | j)= 0??0???? ????0??0 ?0??0??? 
+   -> *out & ~(mask& ~j) = 0??0???? ????0??0 ?0??0???
 
 	*/
-  SREG = oldSREG;
   
 }
 void MyAccelStepper1::setCurrentPosition(long position) {AccelStepper::setCurrentPosition(_direction*position);}
@@ -151,5 +150,5 @@ void MyAccelStepper1::setMaxSpeed(float speed) {AccelStepper::setMaxSpeed(speed)
 void MyAccelStepper1::move(long relative) {AccelStepper::move(_direction*relative);}
 void MyAccelStepper1::setSpeed(float speed) {AccelStepper::setSpeed(speed);}
 boolean MyAccelStepper1::run() { return AccelStepper::run();}
-long MyAccelStepper1::currentPosition() { return _direction* AccelStepper::currentPosition();}
+long MyAccelStepper1::currentPosition() { return _direction*AccelStepper::currentPosition();}
 void MyAccelStepper1::moveTo(long absolute) {AccelStepper::moveTo(_direction*absolute);}

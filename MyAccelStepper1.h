@@ -26,11 +26,11 @@ private:
   uint8_t _port;
   uint8_t _digitalPin;
   uint8_t _mask;
+  uint8_t _notMask;
   volatile uint8_t *_out;
   volatile uint8_t *_reg;
   int8_t _direction;
-  uint8_t _bits[4];
-  uint8_t _shiftBits; // upper part of the Port
+  uint8_t _shiftBits;
 
 };
 #endif

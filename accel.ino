@@ -37,7 +37,7 @@ const int LCD_ROWS = 2;
 
 // Pins entered in sequence IN1-IN3-IN2-IN4 for proper step sequence
 MyAccelStepper  stepper0(FULLSTEP,  2,  4,  3,  5); //PE4/PE5/PG5/PE3
-MyAccelStepper  stepper1(FULLSTEP, 6, 8, 7, 9); //PH3/PH5/PH4/PH6
+MyAccelStepper  stepper1(FULLSTEP,  6,  8,  7,  9); //PH3/PH5/PH4/PH6
 MyAccelStepper1 stepper2(FULLSTEP, 10); //PB4-7
 MyAccelStepper  stepper3(FULLSTEP, 14, 16, 15, 17); //PJ1/PH1/PJ0/PH0
 //AccelStepper stepper4(FULLSTEP, 18, 20, 19, 21); //Tx1,SDA,RX1,SCL //PD0-PD3
