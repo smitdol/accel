@@ -70,17 +70,12 @@ static void turnOffPWM(uint8_t timer)
 	}
 }
 
-MyAccelStepper1::MyAccelStepper1(const uint8_t interface, const uint8_t digitalPin, bool reverse, bool enable)
+MyAccelStepper1::MyAccelStepper1(const uint8_t interface, const uint8_t digitalPin, bool enable)
 : AccelStepper(interface, digitalPin, digitalPin+1, digitalPin+2, digitalPin+3, enable),
 _digitalPin(digitalPin),
 _mask(0),
 _shiftBits(0)
 {
-  if (reverse) {
-    _direction = -1;
-  } else {
-    _direction = +1;
-  }
 };
 
 void MyAccelStepper1::begin(){
@@ -144,11 +139,11 @@ void MyAccelStepper1::setOutputPins(uint8_t bits)
 	*/
   
 }
-void MyAccelStepper1::setCurrentPosition(long position) {AccelStepper::setCurrentPosition(_direction*position);}
+void MyAccelStepper1::setCurrentPosition(long position) {AccelStepper::setCurrentPosition(position);}
 void MyAccelStepper1::setAcceleration(float accel) {AccelStepper::setAcceleration(accel);}
 void MyAccelStepper1::setMaxSpeed(float speed) {AccelStepper::setMaxSpeed(speed);}
-void MyAccelStepper1::move(long relative) {AccelStepper::move(_direction*relative);}
+void MyAccelStepper1::move(long relative) {AccelStepper::move(relative);}
 void MyAccelStepper1::setSpeed(float speed) {AccelStepper::setSpeed(speed);}
 boolean MyAccelStepper1::run() { return AccelStepper::run();}
-long MyAccelStepper1::currentPosition() { return _direction*AccelStepper::currentPosition();}
-void MyAccelStepper1::moveTo(long absolute) {AccelStepper::moveTo(_direction*absolute);}
+long MyAccelStepper1::currentPosition() { return AccelStepper::currentPosition();}
+void MyAccelStepper1::moveTo(long absolute) {AccelStepper::moveTo(absolute);}

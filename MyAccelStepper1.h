@@ -7,7 +7,7 @@ class MyAccelStepper1 : public AccelStepper, public IMyAccelStepper
 {
 public:
     virtual ~MyAccelStepper1() = default;
-    MyAccelStepper1(const uint8_t interface, const uint8_t digitalPin, bool reverse = false, bool enable = true);
+    MyAccelStepper1(const uint8_t interface, const uint8_t digitalPin, bool enable = true);
 
     void begin() override;
     void setOutputPins(uint8_t mask) override;
@@ -29,7 +29,6 @@ private:
   uint8_t _notMask;
   volatile uint8_t *_out;
   volatile uint8_t *_reg;
-  int8_t _direction;
   uint8_t _shiftBits;
 
 };
