@@ -102,7 +102,10 @@ void MyAccelStepper1::begin(){
 }
 
 void MyAccelStepper1::disableOutputs() {
-  setOutputPins(0);
+	uint8_t oldSREG = SREG;
+	cli();
+	*_out &= _notMask;
+  SREG = oldSREG;
 }
 
 void MyAccelStepper1::enableOutputs()
@@ -118,8 +121,8 @@ void MyAccelStepper1::setOutputPins(uint8_t bits)
   uint8_t j = (bits << _shiftBits);
 	uint8_t oldSREG = SREG;
 	cli();
-	*_out &= (_notMask | j);
 	*_out |= j;
+	*_out &= (_notMask | j);
   SREG = oldSREG;
   /*
                     *out = ???????? ???????? ????????
@@ -139,11 +142,27 @@ void MyAccelStepper1::setOutputPins(uint8_t bits)
 	*/
   
 }
-void MyAccelStepper1::setCurrentPosition(long position) {AccelStepper::setCurrentPosition(position);}
-void MyAccelStepper1::setAcceleration(float accel) {AccelStepper::setAcceleration(accel);}
-void MyAccelStepper1::setMaxSpeed(float speed) {AccelStepper::setMaxSpeed(speed);}
-void MyAccelStepper1::move(long relative) {AccelStepper::move(relative);}
-void MyAccelStepper1::setSpeed(float speed) {AccelStepper::setSpeed(speed);}
-boolean MyAccelStepper1::run() { return AccelStepper::run();}
-long MyAccelStepper1::currentPosition() { return AccelStepper::currentPosition();}
-void MyAccelStepper1::moveTo(long absolute) {AccelStepper::moveTo(absolute);}
+
+void MyAccelStepper1::step4(long step)
+{
+  // bits 1&2 are swapped wrt original
+  switch (step & 0x3)
+  {
+    case 0:    // 1010 => 1100
+      setOutputPins(0b1100);
+      break;
+
+    case 1:    // 0110 => 0110
+      setOutputPins(0b0110);
+      break;
+
+    case 2:    //0101 => 0011
+      setOutputPins(0b0011);
+      break;
+
+    case 3:    //1001 => 1001
+      setOutputPins(0b1001);
+      break;
+  }
+}
+
