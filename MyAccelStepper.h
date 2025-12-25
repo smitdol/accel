@@ -14,10 +14,11 @@ public:
     void setOutputPins(uint8_t mask) override;
     void disableOutputs() override;
     void enableOutputs() override;
+    void setAcceleration(float accel) override;
+    void setMaxSpeed(float speed) override; 
+    unsigned long computeNewSpeed() override;
 
     void setCurrentPosition(long position) override{AccelStepper::setCurrentPosition(position);};
-    void setAcceleration(float accel) override {AccelStepper::setAcceleration(accel);};
-    void setMaxSpeed(float speed) override {AccelStepper::setMaxSpeed(speed);}; 
     void move(long relative) override {AccelStepper::move(relative);};
     void setSpeed(float speed) override {AccelStepper::setSpeed(speed);};
 
@@ -25,13 +26,25 @@ public:
     long currentPosition() override { return AccelStepper::currentPosition();};
     void moveTo(long absolute) override {AccelStepper::moveTo(absolute);};
     void step4(long step) override {AccelStepper::step4(step);};
-    unsigned long computeNewSpeed() override { return AccelStepper::computeNewSpeed();};
 
 private:
   Mapper _portMapper1;
   Mapper _portMapper2;
   Mapper _portMapper3;
   Mapper _portMapper4;
+
+  /// The step counter for speed calculations
+  long _n;
+
+  /// Initial step size in microseconds
+  long _c0;
+
+  /// Last step size in microseconds
+  long _cn;
+
+  /// Min step size in microseconds based on maxSpeed
+  long _cmin; // at max speed
+
 };
 
 #endif
