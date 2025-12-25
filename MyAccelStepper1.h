@@ -2,7 +2,7 @@
 #ifndef MyAccelStepper1_h
 #define MyAccelStepper1_h
 #include "IMyAccelStepper.h"
-#include <AccelStepper.h>
+#include "AccelStepper.h"
 class MyAccelStepper1 : public AccelStepper, public IMyAccelStepper
 {
 public:
@@ -14,10 +14,11 @@ public:
     void disableOutputs() override;
     void enableOutputs() override;
     void step4(long step) override;  
+    unsigned long computeNewSpeed() override;
+    void setAcceleration(float accel) override;
+    void setMaxSpeed(float speed) override; 
 
     void setCurrentPosition(long position) override {AccelStepper::setCurrentPosition(position);};
-    void setAcceleration(float accel) override {AccelStepper::setAcceleration(accel);};
-    void setMaxSpeed(float speed) override {AccelStepper::setMaxSpeed(speed);}; 
     void move(long relative) override {AccelStepper::move(relative);};
     void setSpeed(float speed) override {AccelStepper::setSpeed(speed);};
     boolean run() override { return AccelStepper::run();};
@@ -31,6 +32,18 @@ private:
   volatile uint8_t *_out;
   volatile uint8_t *_reg;
   uint8_t _shiftBits;
+
+  /// The step counter for speed calculations
+  long _n;
+
+  /// Initial step size in microseconds
+  long _c0;
+
+  /// Last step size in microseconds
+  long _cn;
+
+  /// Min step size in microseconds based on maxSpeed
+  long _cmin; // at max speed
 
 };
 #endif

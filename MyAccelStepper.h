@@ -2,7 +2,7 @@
 #ifndef MyAccelStepper_h
 #define MyAccelStepper_h
 #include "IMyAccelStepper.h"
-#include <AccelStepper.h>
+#include "AccelStepper.h"
 #include "Mapper.h"
 
 class MyAccelStepper : public AccelStepper, public IMyAccelStepper
@@ -25,6 +25,7 @@ public:
     long currentPosition() override { return AccelStepper::currentPosition();};
     void moveTo(long absolute) override {AccelStepper::moveTo(absolute);};
     void step4(long step) override {AccelStepper::step4(step);};
+    unsigned long computeNewSpeed() override { return AccelStepper::computeNewSpeed();};
 
 private:
   Mapper _portMapper1;

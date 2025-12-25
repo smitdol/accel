@@ -19,6 +19,8 @@ public:
     virtual boolean run() = 0;
     virtual long currentPosition() = 0;
     virtual void moveTo(long absolute) = 0;
-    virtual void step4(long step) = 0;   
+    virtual void step4(long step) = 0;
+    virtual unsigned long computeNewSpeed() = 0;
+   
 };
 #endif
