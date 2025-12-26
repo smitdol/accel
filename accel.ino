@@ -56,9 +56,10 @@ MyAccelStepper stepper4(FULLSTEP, A12, A14, A13, A15); //PK4-7
 
 MyAccelStepper* steppers[totalsteppers];
 
-long positions[totalsteppers+1]; //1 extra is used in EEPROM 
+long positions[totalsteppers+1]; //1 extra is used in EEPROM
 long distanceToGo[totalsteppers];
 bool moresteps;
+bool hasLCD;
 bool targetset;
 bool written = false;
 int step;
@@ -70,11 +71,11 @@ unsigned long delta;
 //https://www.codrey.com/arduino-projects/arduino-power-down-auto-save/
 //int PD_PIN =2; // D2 used for  power-down detection (INT.0)
 
-// 1019 = 2038/2, where 2038 is not 2048 
+// 1019 = 2038/2, where 2038 is not 2048
 
 #define totalsteps 34
 volatile long pattern[totalsteps][totalsteppers] = {
- // 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15 
+ // 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15
   { I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I}, //0
   { J, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I},
   { I, J, I, I, I, I, I, I, I, I, I, I, I, I, I, I},
@@ -122,17 +123,19 @@ void LogLine(const char * s) {
   strcpy(row1, row2);
   snprintf(row2, 16, s);
   memset(buffer,' ',16);
-  Wire.begin();
-  lcd.clear();
-  lcd.setCursor(0,0);  
-  lcd.print(buffer);  
-  lcd.setCursor(0,1);  
-  lcd.print(buffer);
-  lcd.setCursor(0,0);  
-  lcd.print(row1);  
-  lcd.setCursor(0,1);  
-  lcd.print(row2);
-  Wire.end();  
+  if (hasLCD) {
+    Wire.begin();
+    lcd.clear();
+    lcd.setCursor(0,0);
+    lcd.print(buffer);
+    lcd.setCursor(0,1);
+    lcd.print(buffer);
+    lcd.setCursor(0,0);
+    lcd.print(row1);
+    lcd.setCursor(0,1);
+    lcd.print(row2);
+    Wire.end();
+  }
 }
 
 void setup() {
@@ -151,10 +154,11 @@ void setup() {
 
 		// hd44780 has a fatalError() routine that blinks an led if possible
 		// begin() failed so blink error code using the onboard LED if possible
-		 hd44780::fatalError(status); // does not return
-	}
-	lcd.print("Hello, World!");
-
+		 hasLCD = false;//hd44780::fatalError(status); // does not return
+	} else {
+    hasLCD= true;
+	  lcd.print("Hello, World!");
+  }
   steppers[0] = &stepper0;
   steppers[1] = &stepper1;
   steppers[2] = &stepper2;
@@ -184,7 +188,7 @@ void setup() {
   moresteps = false; //restorePositions(); // init next step or continue where left
   step=totalsteps-1; //++step%totalsteps = 0
 //  attachInterrupt(digitalPinToInterrupt(PD_PIN), PD_ISR,FALLING); // Set-up Interrupt Service Routine (ISR)
-  time = micros();  
+  time = micros();
 }
 
 void nextstep() {
@@ -207,7 +211,7 @@ void home(unsigned i, unsigned j) {
     steppers[k]->setCurrentPosition(0);
     steppers[k]->setAcceleration(100); //defining some low acceleration
     steppers[k]->setMaxSpeed(100); //set speed, 100 for test purposes
-    steppers[k]->move(-2048); ////set distance - negative value flips the direction, 2048 > 2038 
+    steppers[k]->move(-2048); ////set distance - negative value flips the direction, 2048 > 2038
   }
   //snprintf(buffer, 16, "Moving to -2048");LogLine(buffer);
   do {
@@ -236,7 +240,7 @@ void CheckSerial() {
   {
     char receivedCommand = Serial.read(); // this will read the command character
     switch (receivedCommand) {
-      case 'h':   
+      case 'h':
         // homing
         motornumber = Serial.parseInt();
         home(motornumber,1);
@@ -365,17 +369,17 @@ long readVcc() {
     ADMUX = _BV(MUX3) | _BV(MUX2);
   #else
     ADMUX = _BV(REFS0) | _BV(MUX3) | _BV(MUX2) | _BV(MUX1);
-  #endif  
- 
+  #endif
+
   delay(2); // Wait for Vref to settle
   ADCSRA |= _BV(ADSC); // Start conversion
   while (bit_is_set(ADCSRA,ADSC)); // measuring
- 
-  uint8_t low  = ADCL; // must read ADCL first - it then locks ADCH  
+
+  uint8_t low  = ADCL; // must read ADCL first - it then locks ADCH
   uint8_t high = ADCH; // unlocks both
- 
+
   long result = (high<<8) | low;
- 
+
   result = 1125300L / result; // Calculate Vcc (in mV); 1125300 = 1.1*1023*1000
   return result; // Vcc in millivolts
 }
