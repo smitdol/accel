@@ -59,6 +59,7 @@ IMyAccelStepper* steppers[totalsteppers];
 //long positions[totalsteppers+1]; //1 extra is used in EEPROM 
 long distanceToGo[totalsteppers];
 bool moresteps;
+bool hasLCD;
 //bool targetset;
 //bool written = false;
 int step;
@@ -122,17 +123,19 @@ void LogLine(const char * s) {
   strcpy(row1, row2);
   snprintf(row2, 16, s);
   memset(buffer,' ',16);
-  Wire.begin();
-  lcd.clear();
-  lcd.setCursor(0,0);  
-  lcd.print(buffer);  
-  lcd.setCursor(0,1);  
-  lcd.print(buffer);
-  lcd.setCursor(0,0);  
-  lcd.print(row1);  
-  lcd.setCursor(0,1);  
-  lcd.print(row2);
-  Wire.end();  
+  if (hasLCD) {
+    Wire.begin();
+    lcd.clear();
+    lcd.setCursor(0,0);  
+    lcd.print(buffer);  
+    lcd.setCursor(0,1);  
+    lcd.print(buffer);
+    lcd.setCursor(0,0);  
+    lcd.print(row1);  
+    lcd.setCursor(0,1);  
+    lcd.print(row2);
+    Wire.end();
+  }  
 }
 
 void setup() {
@@ -151,10 +154,11 @@ void setup() {
 
 		// hd44780 has a fatalError() routine that blinks an led if possible
 		// begin() failed so blink error code using the onboard LED if possible
-		 hd44780::fatalError(status); // does not return
-	}
-	lcd.print("Hello, World!");
-
+		 hasLCD = false;//hd44780::fatalError(status); // does not return
+	} else {
+    hasLCD= true;
+	  lcd.print("Hello, World!");
+  }
   steppers[0] = &stepper0;
   steppers[1] = &stepper1;
   steppers[2] = &stepper2;
