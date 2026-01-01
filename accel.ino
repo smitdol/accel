@@ -3,11 +3,12 @@
 #include "MyAccelStepper1.h"
 #include "MyAccelStepper.h"
 #define FULLSTEP 4
-//#include <EEPROM.h>
-
+#include <EEPROM.h>
+#include <DMXSerial.h>
 #include <Wire.h>
 #include <hd44780.h>                       // main hd44780 header
 #include <hd44780ioClass/hd44780_I2Cexp.h> // i2c expander i/o class header
+
 
 hd44780_I2Cexp lcd; // declare lcd object: auto locate & auto config expander chip
 // LCD geometry
@@ -19,19 +20,6 @@ const int LCD_ROWS = 2;
 #define MAXSPEED 2048.0
 #define ACCEL 600.0
 #define HOEK 128 //2048*22.5/360 = 128
-#define A -28  // mechanische 0/aanloop/motor op die positie wordt op 0 gezet
-#define B HOEK
-#define C B+HOEK
-#define D C+HOEK
-#define E D+HOEK
-#ifdef F
-#undef F
-#endif
-#define F E+HOEK
-#define G F+HOEK
-#define H G+HOEK
-#define I H+HOEK //1024 = 180gr
-#define J 0 //
 
 #define totalsteppers 16
 
@@ -63,7 +51,6 @@ bool hasLCD;
 //bool targetset;
 //bool written = false;
 int step;
-int motornumber = totalsteppers;
 unsigned long time;
 unsigned long now;
 unsigned long delta;
@@ -73,46 +60,14 @@ unsigned long delta;
 
 // 1019 = 2038/2, where 2038 is not 2048 
 
-#define totalsteps 34
-volatile long pattern[totalsteps][totalsteppers] = {
+const int dmxChannel = 1;
+uint8_t module = 0;
+#define totalsteps 2
+volatile uint8_t pattern[totalsteps][totalsteppers] = {
  // 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15 
-  { I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I}, //0
-  { J, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I},
-  { I, J, I, I, I, I, I, I, I, I, I, I, I, I, I, I},
-  { J, I, J, I, I, I, I, I, I, I, I, I, I, I, I, I},
-  { I, J, I, J, I, I, I, I, I, I, I, I, I, I, I, I},
-  { J, I, J, I, J, I, I, I, I, I, I, I, I, I, I, I},
-  { I, J, I, J, I, J, I, I, I, I, I, I, I, I, I, I},
-  { J, I, J, I, J, I, J, I, I, I, I, I, I, I, I, I},
-  { I, J, I, J, I, J, I, J, I, I, I, I, I, I, I, I},
-  { J, I, J, I, J, I, J, I, J, I, I, I, I, I, I, I},
-  { I, J, I, J, I, J, I, J, I, J, I, I, I, I, I, I},
-  { J, I, J, I, J, I, J, I, J, I, J, I, I, I, I, I},
-  { I, J, I, J, I, J, I, J, I, J, I, J, I, I, I, I},
-  { J, I, J, I, J, I, J, I, J, I, J, I, J, I, I, I},
-  { I, J, I, J, I, J, I, J, I, J, I, J, I, J, I, I},
-  { J, I, J, I, J, I, J, I, J, I, J, I, J, I, J, I},
-  { I, J, I, J, I, J, I, J, I, J, I, J, I, J, I, J},
-  { J, I, J, I, J, I, J, I, J, I, J, I, J, I, J, I}, //17
-
-  { I, H, A, A, A, A, A, A, A, A, A, A, A, A, A, A}, //18
-  { J, A, F, C, B, A, A, A, A, A, A, A, A, A, A, A},
-  { H, H, F, C, B, B, B, B, B, B, B, B, A, A, A, A},
-  { J, B, B, F, B, B, B, B, B, B, B, B, B, B, B, B},
-  { G, H, B, F, B, D, B, D, B, D, B, D, B, D, B, D},
-  { J, C, C, D, C, D, C, D, C, D, C, D, C, D, C, D},
-  { F, H, C, D, E, E, C, D, E, E, C, D, E, E, C, D},
-  { J, D, E, E, E, E, E, E, E, E, E, E, E, E, E, E},
-  { E, H, E, E, A, A, A, A, A, A, A, A, E, E, E, E},
-  { J, E, A, A, A, A, A, A, A, H, H, H, A, A, A, A},
-  { D, H, G, H, F, A, H, H, H, H, H, H, A, A, A, A},
-  { J, F, G, A, F, A, A, A, A, A, A, H, A, A, A, A},
-  { C, H, G, A, F, A, A, A, A, A, B, A, E, E, E, E},
-  { J, G, B, C, D, E, E, D, A, A, B, A, E, E, E, E},
-  { B, H, B, B, C, D, D, C, B, A, A, A, E, E, E, E},
-  { J, I, B, B, C, D, D, C, B, A, A, A, E, C, C, F},
-//  { I, H, B, B, A, A, A, A, A, A, A, A, A, C, C, F}, //34
-  };
+  { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, //0
+  { 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8}, //1
+};
 
 char row1[17];
 char row2[17];
@@ -141,12 +96,13 @@ void LogLine(const char * s) {
 void setup() {
   Serial.begin(9600); //define baud rate
   Serial.println("Moin Moin"); //print a message
+  DMXSerial.init(DMXReceiver);
+  SetDefaultPattern();
   memset(row1,'\0',17);
   memset(row2,'\0',17);
   memset(buffer,'\0',17);
 
-  int status;
-	status = lcd.begin(LCD_COLS, LCD_ROWS);
+  int status = lcd.begin(LCD_COLS, LCD_ROWS);
 	if(status) // non zero status means it was unsuccesful
 	{
   	Serial.print("LCD initalization failed: ");
@@ -159,6 +115,14 @@ void setup() {
     hasLCD= true;
 	  lcd.print("Hello, World!");
   }
+
+  EEPROM.get(0, module);
+  snprintf(buffer, 16, "EEPROM0=%i",module);
+  if (module > 31) module = 0;
+  snprintf(buffer, 16, "Module=%i",module);
+  LogLine(buffer);
+
+
   steppers[0] = &stepper0;
   steppers[1] = &stepper1;
   steppers[2] = &stepper2;
@@ -185,9 +149,10 @@ void setup() {
   }
   home(0, 8);
   home(8, 8);
+
+
   moresteps = false; //restorePositions(); // init next step or continue where left
   step=totalsteps-1; //++step%totalsteps = 0
-//  attachInterrupt(digitalPinToInterrupt(PD_PIN), PD_ISR,FALLING); // Set-up Interrupt Service Routine (ISR)
   time = micros();  
 }
 
@@ -213,7 +178,6 @@ void home(unsigned i, unsigned j) {
     steppers[k]->setMaxSpeed(MAXSPEED); //set speed, 100 for test purposes
     steppers[k]->move(-2048); ////set distance - negative value flips the direction, 2048 > 2038 
   }
-  //snprintf(buffer, 16, "Moving to -2048");LogLine(buffer);
   do {
     moresteps = false;
     for (unsigned k = i; k < i+j; k++){
@@ -227,7 +191,6 @@ void home(unsigned i, unsigned j) {
     steppers[k]->setAcceleration(ACCEL);
     steppers[k]->setCurrentPosition(0);
     steppers[k]->setMaxSpeed(MAXSPEED);
-    //steppers[k]->run();
     steppers[k]->disableOutputs();
   }
   LogLine("Completed HOMING");
@@ -239,11 +202,30 @@ void CheckSerial() {
   if (Serial.available() > 0) //if something comes
   {
     char receivedCommand = Serial.read(); // this will read the command character
+    int parsedInt;
     switch (receivedCommand) {
       case 'h':   
         // homing
-        motornumber = Serial.parseInt();
-        home(motornumber,1);
+        parsedInt = Serial.parseInt();
+        home(parsedInt,1);
+        break;
+      case 'i':
+        EEPROM.get(0, module);
+        snprintf(buffer, 16, "Module=%i",module);
+        LogLine(buffer);
+        break;
+      case 'm':
+        parsedInt = Serial.parseInt();
+        if (parsedInt < 0 || parsedInt > 31)
+        {
+          snprintf(buffer, 16, "invalid %i",parsedInt);
+          LogLine(buffer);
+        } else {
+          module=parsedInt;
+          EEPROM.put(0, module);
+          snprintf(buffer, 16, "setModule %i",module);
+          LogLine(buffer);
+        }
         break;
       default:
         snprintf(buffer, 16, "received %c",receivedCommand);
@@ -254,23 +236,37 @@ void CheckSerial() {
 
 }
 
+void SetDefaultPattern() {
+  uint8_t index = dmxChannel + (module * totalsteppers);
+  for (uint8_t j = 0; j < totalsteppers; j++){
+    DMXSerial.write(index+j,pattern[0][j]);
+  } // 34*16 = 544 > 512; 512/16 = 32; dmxChannel ~ 30*16 = 480
+}
+
+
+void UpdatePattern() {
+  if (DMXSerial.dataUpdated()) {
+    DMXSerial.resetUpdated();
+    uint8_t index = dmxChannel + (module * totalsteppers);
+    for (uint8_t j = 0; j < totalsteppers; j++){
+      uint8_t value = DMXSerial.read(index+j);
+      pattern[0][j]=value;
+    }
+    step = totalsteps-1; // nextstep => step = 0;
+  }
+}
+
 void loop() {
   CheckSerial();
+  UpdatePattern();
   if (moresteps) {
     moresteps=false;
-
     for( uint8_t i = 0; i < totalsteppers; i++) {
-//time = micros();
       if ( steppers[i]->run())
       {
         moresteps=true;
       }
-  //now = micros();
-  //delta = now - time;
-  //snprintf(buffer,16,"time: %ld  ", delta);
-  //LogLine(buffer);
     }
-
     return; // loop again
   }
   now = micros();
@@ -283,13 +279,13 @@ void loop() {
   long longestDistance = 0.0;
   for( uint8_t i = 0; i < totalsteppers; i++) {
     long currentpos = steppers[i]->currentPosition();
-    if (A == currentpos) {
+    if (currentpos <= 0) {
       // home again
       steppers[i]->setCurrentPosition(0);
       steppers[i]->run();
       currentpos = 0;
     }
-    distanceToGo[i] = pattern[step][i] - currentpos;
+    distanceToGo[i] = pattern[step][i]*HOEK - currentpos; //HOEK
     if (distanceToGo[i] !=  0) {
       longestDistance = max(abs(distanceToGo[i]),longestDistance);
       steppers[i]->enableOutputs();
@@ -297,90 +293,18 @@ void loop() {
       steppers[i]->disableOutputs();
     }
   }
-//  snprintf(buffer,16,"step: %d  ", step);
-//  LogLine(buffer);
 
-  if (longestDistance > 0.0) {
+  if (longestDistance > 0) {
     moresteps = true;
     for( uint8_t i = 0; i < totalsteppers; i++) {
       if (distanceToGo[i] != 0) {
         float speed = MAXSPEED*(distanceToGo[i] / longestDistance);
         steppers[i]->setSpeed(speed);
-        steppers[i]->moveTo(pattern[step][i]); //reset's speed
-//    } else {
-//      steppers[i]->disableOutputs();
+        long value = pattern[step][i]*HOEK;//HOEK;
+        if (value == 0) steppers[i]->moveTo(-HOEK); //-HOEK enforces 0
+        else
+        steppers[i]->moveTo(value);
       }
     }
   }
 }
-/*
-void PD_ISR () { // ISR to be get called on power-down state
-//    powerDown();
-}
-
-bool powerDown() {
-  for(i = 0; i < totalsteppers; i++) {
-    steppers[i]->setSpeed(0);
-    steppers[i]->disableOutputs();
-  }
-  savePositions();
-}
-void savePositions() {
-  position=0;
-  for(i = 0; i < totalsteppers; i++) {
-    positions[i]= steppers[i]->currentPosition();
-    position^=positions[i];
-  }
-  positions[totalsteppers]=position;
-  EEPROM.put(0, positions); // takes 3.3 ms per write
-  EEPROM.put(sizeof(positions),step);
-}
-
-bool restorePositions() {
-  EEPROM.get(0, positions); // any position saved?
-  position=0;
-  for(i = 0; i < totalsteppers; i++) {
-    position^=positions[i];
-  }
-
-  if (positions[totalsteppers] == position) {
-    for(i = 0; i < totalsteppers; i++) {
-      steppers[i]->setCurrentPosition(positions[i]);
-    }
-    EEPROM.get(sizeof(positions),step);
-    return true;
-  } else {
-    for(i = 0; i < totalsteppers; i++){
-      steppers[i]->setCurrentPosition(0);
-    }
-    return false;
-  }
-}
-
-//https://forum.arduino.cc/t/detecting-battery-voltage-using-bandgap-internal-1-1v-reference/225628/2
-long readVcc() {
-  // Read 1.1V reference against AVcc
-  // set the reference to Vcc and the measurement to the internal 1.1V reference
-  #if defined(__AVR_ATmega32U4__) || defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__)
-    ADMUX = _BV(REFS0) | _BV(MUX4) | _BV(MUX3) | _BV(MUX2) | _BV(MUX1);
-  #elif defined (__AVR_ATtiny24__) || defined(__AVR_ATtiny44__) || defined(__AVR_ATtiny84__)
-    ADMUX = _BV(MUX5) | _BV(MUX0);
-  #elif defined (__AVR_ATtiny25__) || defined(__AVR_ATtiny45__) || defined(__AVR_ATtiny85__)
-    ADMUX = _BV(MUX3) | _BV(MUX2);
-  #else
-    ADMUX = _BV(REFS0) | _BV(MUX3) | _BV(MUX2) | _BV(MUX1);
-  #endif  
- 
-  delay(2); // Wait for Vref to settle
-  ADCSRA |= _BV(ADSC); // Start conversion
-  while (bit_is_set(ADCSRA,ADSC)); // measuring
- 
-  uint8_t low  = ADCL; // must read ADCL first - it then locks ADCH  
-  uint8_t high = ADCH; // unlocks both
- 
-  long result = (high<<8) | low;
- 
-  result = 1125300L / result; // Calculate Vcc (in mV); 1125300 = 1.1*1023*1000
-  return result; // Vcc in millivolts
-}
-*/
