@@ -4,6 +4,7 @@
 #include "MyAccelStepper.h"
 #define FULLSTEP 4
 #include <EEPROM.h>
+#define DMX_USE_PORT1
 #include <DMXSerial.h>
 #include <Wire.h>
 #include <hd44780.h>                       // main hd44780 header
@@ -96,7 +97,7 @@ void LogLine(const char * s) {
 void setup() {
   Serial.begin(9600); //define baud rate
   Serial.println("Moin Moin"); //print a message
-  DMXSerial.init(DMXReceiver);
+  DMXSerial.init(DMXReceiver, -1); // slave mode
   SetDefaultPattern();
   memset(row1,'\0',17);
   memset(row2,'\0',17);
@@ -237,28 +238,34 @@ void CheckSerial() {
 }
 
 void SetDefaultPattern() {
-  uint8_t index = dmxChannel + (module * totalsteppers);
+  Serial.print("SetDefaultPattern:");
+  int index = dmxChannel + (module * totalsteppers);
   for (uint8_t j = 0; j < totalsteppers; j++){
-    DMXSerial.write(index+j,pattern[0][j]);
+    uint8_t value = pattern[0][j];
+    DMXSerial.write(index+j,value);
+    Serial.print(value);Serial.print(",");
   } // 34*16 = 544 > 512; 512/16 = 32; dmxChannel ~ 30*16 = 480
+  Serial.println();
 }
 
 
 void UpdatePattern() {
   if (DMXSerial.dataUpdated()) {
     DMXSerial.resetUpdated();
-    uint8_t index = dmxChannel + (module * totalsteppers);
+    Serial.print("UpdatePattern:");
+    int index = dmxChannel + (module * totalsteppers);
     for (uint8_t j = 0; j < totalsteppers; j++){
       uint8_t value = DMXSerial.read(index+j);
       pattern[0][j]=value;
+      Serial.print(value);Serial.print(",");
     }
+    Serial.println();
     step = totalsteps-1; // nextstep => step = 0;
   }
 }
 
 void loop() {
   CheckSerial();
-  UpdatePattern();
   if (moresteps) {
     moresteps=false;
     for( uint8_t i = 0; i < totalsteppers; i++) {
@@ -269,6 +276,7 @@ void loop() {
     }
     return; // loop again
   }
+  UpdatePattern();
   now = micros();
   delta = now - time;
   snprintf(buffer,16,"time: %ld  ", delta);
@@ -276,7 +284,7 @@ void loop() {
   time = now;
   nextstep();
 
-  long longestDistance = 0.0;
+  long longestDistance = 0L;
   for( uint8_t i = 0; i < totalsteppers; i++) {
     long currentpos = steppers[i]->currentPosition();
     if (currentpos <= 0) {
@@ -285,7 +293,7 @@ void loop() {
       steppers[i]->run();
       currentpos = 0;
     }
-    distanceToGo[i] = pattern[step][i]*HOEK - currentpos; //HOEK
+    distanceToGo[i] = (long)(pattern[step][i]*HOEK) - currentpos; //HOEK
     if (distanceToGo[i] !=  0) {
       longestDistance = max(abs(distanceToGo[i]),longestDistance);
       steppers[i]->enableOutputs();
@@ -298,12 +306,11 @@ void loop() {
     moresteps = true;
     for( uint8_t i = 0; i < totalsteppers; i++) {
       if (distanceToGo[i] != 0) {
-        float speed = MAXSPEED*(distanceToGo[i] / longestDistance);
+        float speed = ((MAXSPEED*distanceToGo[i]) / (1.0*longestDistance));
         steppers[i]->setSpeed(speed);
-        long value = pattern[step][i]*HOEK;//HOEK;
-        if (value == 0) steppers[i]->moveTo(-HOEK); //-HOEK enforces 0
-        else
-        steppers[i]->moveTo(value);
+        uint8_t value = pattern[step][i];
+        if (value == 0) steppers[i]->moveTo(-5); // -5 enforces 0
+        else steppers[i]->moveTo(value*HOEK);
       }
     }
   }
