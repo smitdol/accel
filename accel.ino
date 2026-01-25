@@ -2,6 +2,8 @@
 // Include the AccelStepper Library (Mike McCauley)
 #include "MyAccelStepper1.h"
 #include "MyAccelStepper.h"
+#include "pattern.h"
+
 #define FULLSTEP 4
 //#include <EEPROM.h>
 
@@ -19,20 +21,7 @@ const int LCD_ROWS = 2;
 #define MAXSPEED 2048.0
 #define ACCEL 600.0
 #define HOEK 128 //2048*22.5/360 = 128
-#define A -28  // mechanische 0/aanloop/motor op die positie wordt op 0 gezet
-#define B HOEK
-#define C B+HOEK
-#define D C+HOEK
-#define E D+HOEK
-#ifdef F
-#undef F
-#endif
-#define F E+HOEK
-#define G F+HOEK
-#define H G+HOEK
-#define I H+HOEK //1024 = 180gr
-#define J 0 //
-
+#define HOME -5
 #define totalsteppers 16
 
 // Pins entered in sequence IN1-IN3-IN2-IN4 for proper step sequence
@@ -62,9 +51,9 @@ bool moresteps;
 bool hasLCD;
 //bool targetset;
 //bool written = false;
-int step;
+uint8_t step;
 int motornumber = totalsteppers;
-unsigned long time;
+unsigned long starttime;
 unsigned long now;
 unsigned long delta;
 //https://arduino.stackexchange.com/questions/16352/measure-vcc-using-1-1v-bandgap ?
@@ -73,50 +62,17 @@ unsigned long delta;
 
 // 1019 = 2038/2, where 2038 is not 2048 
 
-#define totalsteps 34
-volatile long pattern[totalsteps][totalsteppers] = {
- // 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15 
-  { I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I}, //0
-  { J, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I},
-  { I, J, I, I, I, I, I, I, I, I, I, I, I, I, I, I},
-  { J, I, J, I, I, I, I, I, I, I, I, I, I, I, I, I},
-  { I, J, I, J, I, I, I, I, I, I, I, I, I, I, I, I},
-  { J, I, J, I, J, I, I, I, I, I, I, I, I, I, I, I},
-  { I, J, I, J, I, J, I, I, I, I, I, I, I, I, I, I},
-  { J, I, J, I, J, I, J, I, I, I, I, I, I, I, I, I},
-  { I, J, I, J, I, J, I, J, I, I, I, I, I, I, I, I},
-  { J, I, J, I, J, I, J, I, J, I, I, I, I, I, I, I},
-  { I, J, I, J, I, J, I, J, I, J, I, I, I, I, I, I},
-  { J, I, J, I, J, I, J, I, J, I, J, I, I, I, I, I},
-  { I, J, I, J, I, J, I, J, I, J, I, J, I, I, I, I},
-  { J, I, J, I, J, I, J, I, J, I, J, I, J, I, I, I},
-  { I, J, I, J, I, J, I, J, I, J, I, J, I, J, I, I},
-  { J, I, J, I, J, I, J, I, J, I, J, I, J, I, J, I},
-  { I, J, I, J, I, J, I, J, I, J, I, J, I, J, I, J},
-  { J, I, J, I, J, I, J, I, J, I, J, I, J, I, J, I}, //17
+/* 8 KB memory 96*481 = 46176 => 6*8KB ... does not fit :( */
+// 0-2,4,6,8 (=180) = 4 bits => tabel 96*241 = 23136 is 4 x 8KB
+// 1+30*16=481.... 46174 > 32767, so need 2 patterns ...
+// 32768/481 = 68 = (86 -18)+1 
 
-  { I, H, A, A, A, A, A, A, A, A, A, A, A, A, A, A}, //18
-  { J, A, F, C, B, A, A, A, A, A, A, A, A, A, A, A},
-  { H, H, F, C, B, B, B, B, B, B, B, B, A, A, A, A},
-  { J, B, B, F, B, B, B, B, B, B, B, B, B, B, B, B},
-  { G, H, B, F, B, D, B, D, B, D, B, D, B, D, B, D},
-  { J, C, C, D, C, D, C, D, C, D, C, D, C, D, C, D},
-  { F, H, C, D, E, E, C, D, E, E, C, D, E, E, C, D},
-  { J, D, E, E, E, E, E, E, E, E, E, E, E, E, E, E},
-  { E, H, E, E, A, A, A, A, A, A, A, A, E, E, E, E},
-  { J, E, A, A, A, A, A, A, A, H, H, H, A, A, A, A},
-  { D, H, G, H, F, A, H, H, H, H, H, H, A, A, A, A},
-  { J, F, G, A, F, A, A, A, A, A, A, H, A, A, A, A},
-  { C, H, G, A, F, A, A, A, A, A, B, A, E, E, E, E},
-  { J, G, B, C, D, E, E, D, A, A, B, A, E, E, E, E},
-  { B, H, B, B, C, D, D, C, B, A, A, A, E, E, E, E},
-  { J, I, B, B, C, D, D, C, B, A, A, A, E, C, C, F},
-//  { I, H, B, B, A, A, A, A, A, A, A, A, A, C, C, F}, //34
-  };
+const uint8_t totalsteps = (sizeof(pattern) + sizeof(restpattern))/(481*sizeof(pattern[0]));
 
 char row1[17];
 char row2[17];
 char buffer[17];
+const uint8_t * data;
 
 void LogLine(const char * s) {
   Serial.println(s);
@@ -140,7 +96,7 @@ void LogLine(const char * s) {
 
 void setup() {
   Serial.begin(9600); //define baud rate
-  Serial.println("Moin Moin"); //print a message
+  Serial.println(F("Moin Moin")); //print a message
   memset(row1,'\0',17);
   memset(row2,'\0',17);
   memset(buffer,'\0',17);
@@ -149,7 +105,7 @@ void setup() {
 	status = lcd.begin(LCD_COLS, LCD_ROWS);
 	if(status) // non zero status means it was unsuccesful
 	{
-  	Serial.print("LCD initalization failed: ");
+  	Serial.print(F("LCD initalization failed: "));
 		Serial.println(status);
 
 		// hd44780 has a fatalError() routine that blinks an led if possible
@@ -187,8 +143,9 @@ void setup() {
   home(8, 8);
   moresteps = false; //restorePositions(); // init next step or continue where left
   step=totalsteps-1; //++step%totalsteps = 0
-//  attachInterrupt(digitalPinToInterrupt(PD_PIN), PD_ISR,FALLING); // Set-up Interrupt Service Routine (ISR)
-  time = micros();  
+  data = restpattern; // because we are at the last step according to previous line
+
+  starttime = micros();  
 }
 
 void nextstep() {
@@ -213,7 +170,6 @@ void home(unsigned i, unsigned j) {
     steppers[k]->setMaxSpeed(MAXSPEED); //set speed, 100 for test purposes
     steppers[k]->move(-2048); ////set distance - negative value flips the direction, 2048 > 2038 
   }
-  //snprintf(buffer, 16, "Moving to -2048");LogLine(buffer);
   do {
     moresteps = false;
     for (unsigned k = i; k < i+j; k++){
@@ -227,7 +183,17 @@ void home(unsigned i, unsigned j) {
     steppers[k]->setAcceleration(ACCEL);
     steppers[k]->setCurrentPosition(0);
     steppers[k]->setMaxSpeed(MAXSPEED);
-    //steppers[k]->run();
+    steppers[k]->move(2*HOEK); // start at 45 degree 
+  }
+  do {
+    moresteps = false;
+    for (unsigned k = i; k < i+j; k++){
+      if (steppers[k]->run()) {
+        moresteps = true;
+      }
+    }
+  } while (moresteps);
+  for (unsigned k = i; k < i+j; k++){
     steppers[k]->disableOutputs();
   }
   LogLine("Completed HOMING");
@@ -260,36 +226,48 @@ void loop() {
     moresteps=false;
 
     for( uint8_t i = 0; i < totalsteppers; i++) {
-//time = micros();
       if ( steppers[i]->run())
       {
         moresteps=true;
       }
-  //now = micros();
-  //delta = now - time;
-  //snprintf(buffer,16,"time: %ld  ", delta);
-  //LogLine(buffer);
     }
-
     return; // loop again
   }
-  now = micros();
-  delta = now - time;
-  snprintf(buffer,16,"time: %ld  ", delta);
-  LogLine(buffer);
-  time = now;
-  nextstep();
 
+  uint16_t offset = 481*step;
+  unsigned long previousstepduration = pgm_read_byte_near(data+offset)*500*1000; //us
+
+  // start prep next pattern
+  nextstep();
+  offset = 1+(481*step);  //+1 to step over previousstepduration
+
+  if (offset > sizeof(pattern)/sizeof(pattern[0])) {
+    data = restpattern;
+    offset -= sizeof(pattern)/sizeof(pattern[0]);
+  } else {
+    data = pattern;
+  }
+
+  data+=offset; // move pointer
+
+  uint8_t pos;
+  unsigned long dummy;
   long longestDistance = 0.0;
   for( uint8_t i = 0; i < totalsteppers; i++) {
     long currentpos = steppers[i]->currentPosition();
-    if (A == currentpos) {
+    if (HOME == currentpos) {
       // home again
       steppers[i]->setCurrentPosition(0);
       steppers[i]->run();
       currentpos = 0;
     }
-    distanceToGo[i] = pattern[step][i] - currentpos;
+    pos = pgm_read_byte_near(data+i);//data+=1+offset already
+    if (pos == 255) {
+      dummy = HOME;
+    } else {
+      dummy = pos * HOEK;
+    }
+    distanceToGo[i] = dummy - currentpos;
     if (distanceToGo[i] !=  0) {
       longestDistance = max(abs(distanceToGo[i]),longestDistance);
       steppers[i]->enableOutputs();
@@ -297,90 +275,31 @@ void loop() {
       steppers[i]->disableOutputs();
     }
   }
-//  snprintf(buffer,16,"step: %d  ", step);
-//  LogLine(buffer);
 
+  float speed;
   if (longestDistance > 0.0) {
     moresteps = true;
     for( uint8_t i = 0; i < totalsteppers; i++) {
       if (distanceToGo[i] != 0) {
-        float speed = MAXSPEED*(distanceToGo[i] / longestDistance);
+        speed = MAXSPEED*(distanceToGo[i] / longestDistance);
         steppers[i]->setSpeed(speed);
-        steppers[i]->moveTo(pattern[step][i]); //reset's speed
+        steppers[i]->move(distanceToGo[i]);
 //    } else {
 //      steppers[i]->disableOutputs();
       }
     }
-  }
-}
-/*
-void PD_ISR () { // ISR to be get called on power-down state
-//    powerDown();
-}
-
-bool powerDown() {
-  for(i = 0; i < totalsteppers; i++) {
-    steppers[i]->setSpeed(0);
-    steppers[i]->disableOutputs();
-  }
-  savePositions();
-}
-void savePositions() {
-  position=0;
-  for(i = 0; i < totalsteppers; i++) {
-    positions[i]= steppers[i]->currentPosition();
-    position^=positions[i];
-  }
-  positions[totalsteppers]=position;
-  EEPROM.put(0, positions); // takes 3.3 ms per write
-  EEPROM.put(sizeof(positions),step);
-}
-
-bool restorePositions() {
-  EEPROM.get(0, positions); // any position saved?
-  position=0;
-  for(i = 0; i < totalsteppers; i++) {
-    position^=positions[i];
-  }
-
-  if (positions[totalsteppers] == position) {
-    for(i = 0; i < totalsteppers; i++) {
-      steppers[i]->setCurrentPosition(positions[i]);
+    // everithing prepped, need to wait?
+    now = micros();
+    delta = now - starttime; // > 0
+    snprintf(buffer,16,"time: %ld  ", delta);
+    LogLine(buffer);
+    if (delta < previousstepduration)
+    {
+      previousstepduration -= delta; // > 0
+      snprintf(buffer,16,"delay: %ld  ", previousstepduration);
+      LogLine(buffer);
+      delayMicroseconds(previousstepduration);
     }
-    EEPROM.get(sizeof(positions),step);
-    return true;
-  } else {
-    for(i = 0; i < totalsteppers; i++){
-      steppers[i]->setCurrentPosition(0);
-    }
-    return false;
+    starttime = now; // begin the next move
   }
 }
-
-//https://forum.arduino.cc/t/detecting-battery-voltage-using-bandgap-internal-1-1v-reference/225628/2
-long readVcc() {
-  // Read 1.1V reference against AVcc
-  // set the reference to Vcc and the measurement to the internal 1.1V reference
-  #if defined(__AVR_ATmega32U4__) || defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__)
-    ADMUX = _BV(REFS0) | _BV(MUX4) | _BV(MUX3) | _BV(MUX2) | _BV(MUX1);
-  #elif defined (__AVR_ATtiny24__) || defined(__AVR_ATtiny44__) || defined(__AVR_ATtiny84__)
-    ADMUX = _BV(MUX5) | _BV(MUX0);
-  #elif defined (__AVR_ATtiny25__) || defined(__AVR_ATtiny45__) || defined(__AVR_ATtiny85__)
-    ADMUX = _BV(MUX3) | _BV(MUX2);
-  #else
-    ADMUX = _BV(REFS0) | _BV(MUX3) | _BV(MUX2) | _BV(MUX1);
-  #endif  
- 
-  delay(2); // Wait for Vref to settle
-  ADCSRA |= _BV(ADSC); // Start conversion
-  while (bit_is_set(ADCSRA,ADSC)); // measuring
- 
-  uint8_t low  = ADCL; // must read ADCL first - it then locks ADCH  
-  uint8_t high = ADCH; // unlocks both
- 
-  long result = (high<<8) | low;
- 
-  result = 1125300L / result; // Calculate Vcc (in mV); 1125300 = 1.1*1023*1000
-  return result; // Vcc in millivolts
-}
-*/
