@@ -61,8 +61,8 @@ unsigned long delta;
 
 // 1019 = 2038/2, where 2038 is not 2048 
 
-const int dmxChannel = 1;
-uint8_t module = 0;
+const int dmxChannel = 3;//0 =  preanble, 1 = duration, 2 = sequence number
+uint8_t module = 0; // read from eeprom
 #define totalsteps 2
 volatile uint8_t pattern[totalsteps][totalsteppers] = {
  // 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15 
@@ -252,11 +252,22 @@ void SetDefaultPattern() {
 void UpdatePattern() {
   if (DMXSerial.dataUpdated()) {
     DMXSerial.resetUpdated();
-    Serial.print("UpdatePattern:");
-    int index = dmxChannel + (module * totalsteppers);
+    Serial.print("UpdatePattern ");
+    int index;
+    uint8_t value;
+    for (index = 0; index < dmxChannel; index++)
+    {
+      value = DMXSerial.read(index); // 0 = preable, 1 = timeout, 2 = sequencenr, next = data
+      Serial.print(value);Serial.print(":");
+    }
+    index = dmxChannel + (module * totalsteppers);
     for (uint8_t j = 0; j < totalsteppers; j++){
-      uint8_t value = DMXSerial.read(index+j);
-      pattern[0][j]=value;
+      value = DMXSerial.read(index+j);
+      if (value == 255){ // home
+        pattern[0][j]=0; // home
+      } else {
+        pattern[0][j]=value;
+      }
       Serial.print(value);Serial.print(",");
     }
     Serial.println();
