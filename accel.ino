@@ -63,11 +63,39 @@ unsigned long delta;
 
 const int dmxChannel = 3;//0 =  preanble, 1 = duration, 2 = sequence number
 uint8_t module = 0; // read from eeprom
-#define totalsteps 2
+#define totalsteps 28
 volatile uint8_t pattern[totalsteps][totalsteppers] = {
  // 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15 
-  { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, //0
-  { 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8}, //1
+//  { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, //0
+//  { 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8}, //1
+{1,7,1,7,1,7,1,7,1,7,1,7,1,7,1,7},
+{2,6,2,6,2,6,2,6,2,6,2,6,2,6,2,6},
+{3,5,3,5,3,5,3,5,3,5,3,5,3,5,3,5},
+{4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4},
+{5,3,5,3,5,3,5,3,5,3,5,3,5,3,5,3},
+{6,2,6,2,6,2,6,2,6,2,6,2,6,2,6,2},
+{7,1,7,1,7,1,7,1,7,1,7,1,7,1,7,1},
+{8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0},
+{0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8},
+{4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4},
+{6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6},
+{4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4},
+{4,0,4,0,4,0,4,0,4,0,4,0,4,0,4,0},
+{0,4,0,4,0,4,0,4,0,4,0,4,0,4,0,4},
+{4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4},
+{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+{8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0},
+{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+{8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0},
+{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+{0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8},
+{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+{0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8},
+{4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4},
+{3,5,3,5,3,5,3,5,3,5,3,5,3,5,3,5},
+{2,6,2,6,2,6,2,6,2,6,2,6,2,6,2,6},
+{1,7,1,7,1,7,1,7,1,7,1,7,1,7,1,7},
+{0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8},
 };
 
 char row1[17];
@@ -148,12 +176,13 @@ void setup() {
   for(uint8_t i = 0; i < totalsteppers; i++){
     steppers[i]->disableOutputs();
   }
-  home(0, 8);
-  home(8, 8);
+  home(0, 8); // even 8
+  home(1, 8); // odd 8
 
 
   moresteps = false; //restorePositions(); // init next step or continue where left
   step=totalsteps-1; //++step%totalsteps = 0
+  delay(10000);
   time = micros();  
 }
 
@@ -172,7 +201,7 @@ void home(unsigned i, unsigned j) {
   }
   snprintf(buffer, 16, "%i - %i", i+1, i+j);
   LogLine(buffer);
-  for (unsigned k = i; k < i+j; k++){
+  for (unsigned k = i; k < i + (2*j); k+=2){
     steppers[k]->enableOutputs();
     steppers[k]->setCurrentPosition(0);
     steppers[k]->setAcceleration(ACCEL); //defining some low acceleration
@@ -181,13 +210,13 @@ void home(unsigned i, unsigned j) {
   }
   do {
     moresteps = false;
-    for (unsigned k = i; k < i+j; k++){
+    for (unsigned k = i; k < i+(2*j); k+=2){
       if (steppers[k]->run()) {
         moresteps = true;
       }
     }
   } while (moresteps);
-  for (unsigned k = i; k < i+j; k++){
+  for (unsigned k = i; k < i+(2*j); k+=2){
     steppers[k]->setSpeed(SPEED);
     steppers[k]->setAcceleration(ACCEL);
     steppers[k]->setCurrentPosition(0);
