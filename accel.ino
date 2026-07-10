@@ -349,8 +349,9 @@ void loop() {
         float speed = ((MAXSPEED*distanceToGo[i]) / (1.0*longestDistance));
         steppers[i]->setSpeed(speed);
         uint8_t value = pattern[step][i];
-        if (value == 0) steppers[i]->moveTo(-5); // -5 enforces 0
-        else steppers[i]->moveTo(value*HOEK);
+        //if (value == 0) steppers[i]->moveTo(-5); // -5 enforces 0
+        //else
+        steppers[i]->moveTo(value*HOEK);
       }
     }
   }
