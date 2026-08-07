@@ -52,7 +52,7 @@ long distanceToGo[totalsteppers];
 bool moresteps;
 bool hasLCD;
 //bool targetset;
-//bool written = false;
+bool dmxControlled = false;
 int step;
 unsigned long time;
 unsigned long now;
@@ -68,8 +68,6 @@ uint8_t module = 0; // read from eeprom
 #define totalsteps 29
 volatile uint8_t pattern[totalsteps][totalsteppers] = {
  // 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15 
-//  { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, //0
-//  { 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8}, //1
 {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
 {0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8},
 {4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4},
@@ -190,13 +188,6 @@ void setup() {
 
 void nextstep() {
   step=(++step)%totalsteps;
-  if (step == 0){
-    for(uint8_t i = 0; i < totalsteppers; i++){
-      steppers[i]->disableOutputs();
-    }
-    home(0, 8); // even 8
-    home(1, 8); // odd 8
-  }
 }
 
 void home(unsigned i, unsigned j) {
@@ -284,6 +275,7 @@ void SetDefaultPattern() {
     Serial.print(value);Serial.print(",");
   } // 34*16 = 544 > 512; 512/16 = 32; dmxChannel ~ 30*16 = 480
   Serial.println();
+  DMXSerial.resetUpdated();
 }
 
 
@@ -301,14 +293,13 @@ void UpdatePattern() {
     index = dmxChannel + (module * totalsteppers);
     for (uint8_t j = 0; j < totalsteppers; j++){
       value = DMXSerial.read(index+j);
-      if (value == 255){ // home
-        pattern[0][j]=0; // home
-      } else {
-        pattern[0][j]=value;
-      }
+      pattern[0][j]=value;
       Serial.print(value);Serial.print(",");
     }
     Serial.println();
+    dmxControlled = true;
+  }
+  if (dmxControlled) {
     step = totalsteps-1; // nextstep => step = 0;
   }
 }
@@ -332,7 +323,7 @@ void loop() {
   LogLine(buffer);
   time = now;
   nextstep();
-
+  Serial.print("step=");Serial.println(step);
   long longestDistance = 0L;
   for( uint8_t i = 0; i < totalsteppers; i++) {
     long currentpos = steppers[i]->currentPosition();
@@ -358,8 +349,6 @@ void loop() {
         float speed = ((MAXSPEED*distanceToGo[i]) / (1.0*longestDistance));
         steppers[i]->setSpeed(speed);
         uint8_t value = pattern[step][i];
-        //if (value == 0) steppers[i]->moveTo(-5); // -5 enforces 0
-        //else
         steppers[i]->moveTo(value*HOEK);
       }
     }
