@@ -25,7 +25,8 @@ const int LCD_ROWS = 2;
 //assuming 1:63.68395, 32 steps/rev => 2037.8864 for 360 => 2037.8864 * 22.5/360 = 127.369 
 
 #define totalsteppers 16
-
+//3 2 1 4 5 6 7 8 9 A b c f g d e
+//2 1 0 3 4 5 6 7 8 9 a b e f c d
 // Pins entered in sequence IN1-IN3-IN2-IN4 for proper step sequence
 MyAccelStepper  stepper0(FULLSTEP,  2,  4,  3,  5); //PE4/PE5/PG5/PE3
 MyAccelStepper  stepper1(FULLSTEP,  6,  8,  7,  9); //PH3/PH5/PH4/PH6
@@ -40,10 +41,10 @@ MyAccelStepper  stepper8(FULLSTEP, 38, 40, 39, 41); //PD7, PG1, PG2, PG0
 MyAccelStepper1 stepper9(FULLSTEP, 42); //PL7, PL5, PL6, PL4
 MyAccelStepper1 stepperA(FULLSTEP, 46); //PL3, PL1 PL2, PL0
 MyAccelStepper1 stepperB(FULLSTEP, 50); //PB0-3
-MyAccelStepper1 stepperC(FULLSTEP, 54); //PF0-3
-MyAccelStepper1 stepperD(FULLSTEP, 58); //PF4-7
-MyAccelStepper1 stepperE(FULLSTEP, 62); //PK0-3
-MyAccelStepper1 stepperF(FULLSTEP, 66); //PK4-7
+MyAccelStepper1 stepperE(FULLSTEP, 54); //PF0-3
+MyAccelStepper1 stepperF(FULLSTEP, 58); //PF4-7
+MyAccelStepper1 stepperC(FULLSTEP, 62); //PK0-3
+MyAccelStepper1 stepperD(FULLSTEP, 66); //PK4-7
 
 IMyAccelStepper* steppers[totalsteppers];
 
@@ -176,9 +177,11 @@ void setup() {
   for(uint8_t i = 0; i < totalsteppers; i++){
     steppers[i]->disableOutputs();
   }
-  home(0, 8); // even 8
-  home(1, 8); // odd 8
-
+  //home(0, 8); // even 8
+  //home(1, 8); // odd 8
+  for(uint8_t i = 0; i < totalsteppers; i++){
+    home(i, 1);
+  }
 
   moresteps = false; //restorePositions(); // init next step or continue where left
   step=totalsteps-1; //++step%totalsteps = 0
