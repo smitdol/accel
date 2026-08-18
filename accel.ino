@@ -66,37 +66,39 @@ unsigned long delta;
 
 const int dmxChannel = 3;//0 =  preanble, 1 = duration, 2 = sequence number
 uint8_t module = 0; // read from eeprom
-#define totalsteps 29
+#define totalsteps 30
 volatile uint8_t pattern[totalsteps][totalsteppers] = {
  // 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15 
-{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
-{0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8},
-{4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4},
-{3,5,3,5,3,5,3,5,3,5,3,5,3,5,3,5},
-{2,6,2,6,2,6,2,6,2,6,2,6,2,6,2,6},
-{1,7,1,7,1,7,1,7,1,7,1,7,1,7,1,7},
-{0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8},
-{1,7,1,7,1,7,1,7,1,7,1,7,1,7,1,7},
-{2,6,2,6,2,6,2,6,2,6,2,6,2,6,2,6},
-{3,5,3,5,3,5,3,5,3,5,3,5,3,5,3,5},
-{4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4},
-{5,3,5,3,5,3,5,3,5,3,5,3,5,3,5,3},
-{6,2,6,2,6,2,6,2,6,2,6,2,6,2,6,2},
-{7,1,7,1,7,1,7,1,7,1,7,1,7,1,7,1},
-{8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0},
-{0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8},
-{4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4},
-{6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6},
-{4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4},
-{4,0,4,0,4,0,4,0,4,0,4,0,4,0,4,0},
-{0,4,0,4,0,4,0,4,0,4,0,4,0,4,0,4},
-{4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4},
-{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
-{8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0},
-{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
-{8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0},
-{0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8},
-{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+{1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
+{1,9,1,9,1,9,1,9,1,9,1,9,1,9,1,9},
+{5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5},
+{4,6,4,6,4,6,4,6,4,6,4,6,4,6,4,6},
+{3,7,3,7,3,7,3,7,3,7,3,7,3,7,3,7},
+{2,8,2,8,2,8,2,8,2,8,2,8,2,8,2,8},
+{1,9,1,9,1,9,1,9,1,9,1,9,1,9,1,9},
+{2,8,2,8,2,8,2,8,2,8,2,8,2,8,2,8},
+{3,7,3,7,3,7,3,7,3,7,3,7,3,7,3,7},
+{4,6,4,6,4,6,4,6,4,6,4,6,4,6,4,6},
+{5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5},
+{6,4,6,4,6,4,6,4,6,4,6,4,6,4,6,4},
+{7,3,7,3,7,3,7,3,7,3,7,3,7,3,7,3},
+{8,2,8,2,8,2,8,2,8,2,8,2,8,2,8,2},
+{9,1,9,1,9,1,9,1,9,1,9,1,9,1,9,1},
+{1,9,1,9,1,9,1,9,1,9,1,9,1,9,1,9},
+{5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5},
+{7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7},
+{5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5},
+{5,1,5,1,5,1,5,1,5,1,5,1,5,1,5,1},
+{1,5,1,5,1,5,1,5,1,5,1,5,1,5,1,5},
+{5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5},
+{1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
+{9,1,9,1,9,1,9,1,9,1,9,1,9,1,9,1},
+{1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
+{9,1,9,1,9,1,9,1,9,1,9,1,9,1,9,1},
+{1,9,1,9,1,9,1,9,1,9,1,9,1,9,1,9},
+{1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
+{0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1},
+{1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0}
 };
 
 char row1[17];
@@ -153,22 +155,23 @@ void setup() {
   LogLine(buffer);
 
 
-  steppers[0] = &stepper0;
+  steppers[0] = &stepper2;
   steppers[1] = &stepper1;
-  steppers[2] = &stepper2;
+  steppers[2] = &stepper0;
   steppers[3] = &stepper3;
-  steppers[4] = &stepper4;
-  steppers[5] = &stepper5;
+  steppers[4] = &stepper5;
+  steppers[5] = &stepper4;
   steppers[6] = &stepper6;
   steppers[7] = &stepper7;
   steppers[8] = &stepper8;
   steppers[9] = &stepper9;
   steppers[10] = &stepperA;
   steppers[11] = &stepperB;
-  steppers[12] = &stepperC;
-  steppers[13] = &stepperD;
-  steppers[14] = &stepperE;
-  steppers[15] = &stepperF;
+  steppers[12] = &stepperD;
+  steppers[13] = &stepperC;
+  steppers[14] = &stepperF;
+  steppers[15] = &stepperE;
+
 
   for(uint8_t i = 0; i < totalsteppers; i++){
     steppers[i]->begin();
@@ -222,7 +225,7 @@ void home(unsigned i, unsigned j) {
   for (unsigned k = i; k < i+(2*j); k+=2){
     steppers[k]->setSpeed(SPEED);
     steppers[k]->setAcceleration(ACCEL);
-    steppers[k]->setCurrentPosition(0);
+    steppers[k]->setCurrentPosition(HOEK); // position = 1 x HOEK
     steppers[k]->setMaxSpeed(MAXSPEED);
     steppers[k]->disableOutputs();
   }
@@ -266,7 +269,6 @@ void CheckSerial() {
         break;
     }
   }
-
 }
 
 void SetDefaultPattern() {
@@ -330,11 +332,11 @@ void loop() {
   long longestDistance = 0L;
   for( uint8_t i = 0; i < totalsteppers; i++) {
     long currentpos = steppers[i]->currentPosition();
-    if (currentpos <= 0) {
+    if (currentpos <= HOEK) {
       // home again
-      steppers[i]->setCurrentPosition(0);
+      steppers[i]->setCurrentPosition(HOEK);
       steppers[i]->run();
-      currentpos = 0;
+      currentpos = HOEK;
     }
     distanceToGo[i] = (long)(pattern[step][i]*HOEK) - currentpos; //HOEK
     if (distanceToGo[i] !=  0) {
@@ -352,6 +354,8 @@ void loop() {
         float speed = ((MAXSPEED*distanceToGo[i]) / (1.0*longestDistance));
         steppers[i]->setSpeed(speed);
         uint8_t value = pattern[step][i];
+        //if (value == 0) steppers[i]->moveTo(-5); // -5 enforces 0
+        //else
         steppers[i]->moveTo(value*HOEK);
       }
     }
