@@ -1,5 +1,6 @@
 // https://lastminuteengineers.com/28byj48-stepper-motor-arduino-tutorial/
 // Include the AccelStepper Library (Mike McCauley)
+#include "MyAccelStepperR.h"
 #include "MyAccelStepper1.h"
 #include "MyAccelStepper.h"
 #define FULLSTEP 4
@@ -23,28 +24,28 @@ const int LCD_ROWS = 2;
 #define HOEK 134 //2048*22.5/360 = 128, 
 //assuming 1:64 gear, 32 steps/rev => 32^64 = 2048 for 360g
 //assuming 1:63.68395, 32 steps/rev => 2037.8864 for 360 => 2037.8864 * 22.5/360 = 127.369 
-
+#define HOMING -16*HOEK
 #define totalsteppers 16
 //3 2 1 4 5 6 7 8 9 A b c f g d e
 //2 1 0 3 4 5 6 7 8 9 a b e f c d
 // Pins entered in sequence IN1-IN3-IN2-IN4 for proper step sequence
-MyAccelStepper  stepper0(FULLSTEP,  2,  4,  3,  5); //PE4/PE5/PG5/PE3
+MyAccelStepper1 stepper0(FULLSTEP, 10); //PB4-7
 MyAccelStepper  stepper1(FULLSTEP,  6,  8,  7,  9); //PH3/PH5/PH4/PH6
-MyAccelStepper1 stepper2(FULLSTEP, 10); //PB4-7
-MyAccelStepper  stepper3(FULLSTEP, 14, 16, 15, 17); //PJ1/PH1/PJ0/PH0
+MyAccelStepper  stepper2(FULLSTEP,  5,  3,  4,  2); //PE4/PE5/PG5/PE3
+MyAccelStepper  stepper3(FULLSTEP, 17, 15, 16, 14); //PJ1/PH1/PJ0/PH0
 //AccelStepper stepper4(FULLSTEP, 18, 20, 19, 21); //Tx1,SDA,RX1,SCL //PD0-PD3
-MyAccelStepper1 stepper4(FULLSTEP, 22); //PA0 22, 24, 23, 25
-MyAccelStepper1 stepper5(FULLSTEP, 26); //PA4 26, 28, 27, 29
+MyAccelStepper1 stepper4(FULLSTEP, 22); //PA0 22, 24, 23, 25 1=revert
+MyAccelStepperR stepper5(FULLSTEP, 26); //PA4 26, 28, 27, 29
 MyAccelStepper1 stepper6(FULLSTEP, 30); //PC7, PC5, PC6, PC4
-MyAccelStepper1 stepper7(FULLSTEP, 34); //PC3, PC1, PC2, PC0
+MyAccelStepperR stepper7(FULLSTEP, 34); //PC3, PC1, PC2, PC0
 MyAccelStepper  stepper8(FULLSTEP, 38, 40, 39, 41); //PD7, PG1, PG2, PG0
-MyAccelStepper1 stepper9(FULLSTEP, 42); //PL7, PL5, PL6, PL4
+MyAccelStepperR stepper9(FULLSTEP, 42); //PL7, PL5, PL6, PL4
 MyAccelStepper1 stepperA(FULLSTEP, 46); //PL3, PL1 PL2, PL0
-MyAccelStepper1 stepperB(FULLSTEP, 50); //PB0-3
-MyAccelStepper1 stepperE(FULLSTEP, 54); //PF0-3
-MyAccelStepper1 stepperF(FULLSTEP, 58); //PF4-7
-MyAccelStepper1 stepperC(FULLSTEP, 62); //PK0-3
-MyAccelStepper1 stepperD(FULLSTEP, 66); //PK4-7
+MyAccelStepperR stepperB(FULLSTEP, 50); //PB0-3
+MyAccelStepper1 stepperC(FULLSTEP, 66); //PK4-7
+MyAccelStepperR stepperD(FULLSTEP, 62); //PK0-3
+MyAccelStepper1 stepperE(FULLSTEP, 58); //PF4-7
+MyAccelStepperR stepperF(FULLSTEP, 54); //PF0-3
 
 IMyAccelStepper* steppers[totalsteppers];
 
@@ -69,36 +70,36 @@ uint8_t module = 0; // read from eeprom
 #define totalsteps 30
 volatile uint8_t pattern[totalsteps][totalsteppers] = {
  // 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15 
-{1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
-{1,9,1,9,1,9,1,9,1,9,1,9,1,9,1,9},
-{5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5},
-{4,6,4,6,4,6,4,6,4,6,4,6,4,6,4,6},
-{3,7,3,7,3,7,3,7,3,7,3,7,3,7,3,7},
-{2,8,2,8,2,8,2,8,2,8,2,8,2,8,2,8},
-{1,9,1,9,1,9,1,9,1,9,1,9,1,9,1,9},
-{2,8,2,8,2,8,2,8,2,8,2,8,2,8,2,8},
-{3,7,3,7,3,7,3,7,3,7,3,7,3,7,3,7},
-{4,6,4,6,4,6,4,6,4,6,4,6,4,6,4,6},
-{5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5},
-{6,4,6,4,6,4,6,4,6,4,6,4,6,4,6,4},
-{7,3,7,3,7,3,7,3,7,3,7,3,7,3,7,3},
-{8,2,8,2,8,2,8,2,8,2,8,2,8,2,8,2},
-{9,1,9,1,9,1,9,1,9,1,9,1,9,1,9,1},
-{1,9,1,9,1,9,1,9,1,9,1,9,1,9,1,9},
-{5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5},
-{7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7},
-{5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5},
-{5,1,5,1,5,1,5,1,5,1,5,1,5,1,5,1},
-{1,5,1,5,1,5,1,5,1,5,1,5,1,5,1,5},
-{5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5},
-{1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
-{9,1,9,1,9,1,9,1,9,1,9,1,9,1,9,1},
-{1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
-{9,1,9,1,9,1,9,1,9,1,9,1,9,1,9,1},
-{1,9,1,9,1,9,1,9,1,9,1,9,1,9,1,9},
-{1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
-{0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1},
-{1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0}
+{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+{0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8},
+{4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4},
+{3,5,3,5,3,5,3,5,3,5,3,5,3,5,3,5},
+{3,6,3,6,3,6,3,6,3,6,3,6,3,6,3,6},
+{1,7,1,7,1,7,1,7,1,7,1,7,1,7,1,7},
+{0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8},
+{1,7,1,7,1,7,1,7,1,7,1,7,1,7,1,7},
+{2,6,3,6,3,6,3,6,3,6,3,6,3,6,3,6},
+{3,5,3,5,3,5,3,5,3,5,3,5,3,5,3,5},
+{4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4},
+{5,3,5,3,5,3,5,3,5,3,5,3,5,3,5,3},
+{6,3,6,3,6,3,6,3,6,3,6,3,6,3,6,3},
+{7,1,7,1,7,1,7,1,7,1,7,1,7,1,7,1},
+{8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0},
+{0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8},
+{4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4},
+{6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6},
+{4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4},
+{4,0,4,0,4,0,4,0,4,0,4,0,4,0,4,0},
+{0,4,0,4,0,4,0,4,0,4,0,4,0,4,0,4},
+{4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4},
+{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+{8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0},
+{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+{8,0,8,0,8,0,8,0,8,0,8,0,8,0,8,0},
+{0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8},
+{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
 };
 
 char row1[17];
@@ -127,7 +128,7 @@ void LogLine(const char * s) {
 
 void setup() {
   Serial.begin(9600); //define baud rate
-  Serial.println("Moin Moin"); //print a message
+  Serial.println("Versie 0.9"); //print a message
   DMXSerial.init(DMXReceiver, -1); // slave mode
   SetDefaultPattern();
   memset(row1,'\0',17);
@@ -155,9 +156,9 @@ void setup() {
   LogLine(buffer);
 
 
-  steppers[0] = &stepper2;
+  steppers[0] = &stepper0;
   steppers[1] = &stepper1;
-  steppers[2] = &stepper0;
+  steppers[2] = &stepper2;
   steppers[3] = &stepper3;
   steppers[4] = &stepper5;
   steppers[5] = &stepper4;
@@ -167,10 +168,10 @@ void setup() {
   steppers[9] = &stepper9;
   steppers[10] = &stepperA;
   steppers[11] = &stepperB;
-  steppers[12] = &stepperD;
-  steppers[13] = &stepperC;
-  steppers[14] = &stepperF;
-  steppers[15] = &stepperE;
+  steppers[12] = &stepperC;
+  steppers[13] = &stepperD;
+  steppers[14] = &stepperE;
+  steppers[15] = &stepperF;
 
 
   for(uint8_t i = 0; i < totalsteppers; i++){
@@ -180,10 +181,8 @@ void setup() {
   for(uint8_t i = 0; i < totalsteppers; i++){
     steppers[i]->disableOutputs();
   }
-  //home(0, 8); // even 8
-  //home(1, 8); // odd 8
   for(uint8_t i = 0; i < totalsteppers; i++){
-    home(i, 1);
+    home(i, HOMING);
   }
 
   moresteps = false; //restorePositions(); // init next step or continue where left
@@ -196,41 +195,37 @@ void nextstep() {
   step=(++step)%totalsteps;
 }
 
-void home(unsigned i, unsigned j) {
+void home(unsigned k, long relative) {
   //https://curiousscientist.tech/blog/accelstepper-tb6600-homing
   LogLine("Homing motors");
-  if (i+j > totalsteppers) {
+  if (k >= totalsteppers) {
     LogLine("Cannot home");
-    snprintf(buffer,16, "motor %i", i+j);
+    snprintf(buffer,16, "motor %i", k);
     LogLine(buffer);
     return;
   }
-  snprintf(buffer, 16, "%i - %i", i+1, i+j);
+  snprintf(buffer, 16, "%i ", k);
   LogLine(buffer);
-  for (unsigned k = i; k < i + (2*j); k+=2){
-    steppers[k]->enableOutputs();
-    steppers[k]->setCurrentPosition(0);
-    steppers[k]->setAcceleration(ACCEL); //defining some low acceleration
-    steppers[k]->setMaxSpeed(MAXSPEED); //set speed, 100 for test purposes
-    steppers[k]->move(-2048); ////set distance - negative value flips the direction, 2048 > 2038 
-  }
+  
+  steppers[k]->enableOutputs();
+  steppers[k]->setCurrentPosition(0);
+  steppers[k]->setAcceleration(ACCEL); //defining some low acceleration
+  steppers[k]->setMaxSpeed(MAXSPEED); //set speed, 100 for test purposes
+  steppers[k]->move(relative); ////set distance - negative value flips the direction, 2048 > 2038 
+
   do {
     moresteps = false;
-    for (unsigned k = i; k < i+(2*j); k+=2){
-      if (steppers[k]->run()) {
-        moresteps = true;
-      }
+    if (steppers[k]->run()) {
+      moresteps = true;
     }
   } while (moresteps);
-  for (unsigned k = i; k < i+(2*j); k+=2){
-    steppers[k]->setSpeed(SPEED);
-    steppers[k]->setAcceleration(ACCEL);
-    steppers[k]->setCurrentPosition(HOEK); // position = 1 x HOEK
-    steppers[k]->setMaxSpeed(MAXSPEED);
-    steppers[k]->disableOutputs();
-  }
+  steppers[k]->setSpeed(SPEED);
+  steppers[k]->setAcceleration(ACCEL);
+  steppers[k]->setCurrentPosition(0);
+  steppers[k]->setMaxSpeed(MAXSPEED);
+  steppers[k]->disableOutputs();
   LogLine("Completed HOMING");
-  snprintf(buffer, 16, "motors %i - %i", i+1, i+j);
+  snprintf(buffer, 16, "motor %i", k);
   LogLine(buffer);
 }
 
@@ -243,7 +238,7 @@ void CheckSerial() {
       case 'h':   
         // homing
         parsedInt = Serial.parseInt();
-        home(parsedInt,1);
+        home(parsedInt, HOMING);
         break;
       case 'i':
         EEPROM.get(0, module);
@@ -332,13 +327,19 @@ void loop() {
   long longestDistance = 0L;
   for( uint8_t i = 0; i < totalsteppers; i++) {
     long currentpos = steppers[i]->currentPosition();
-    if (currentpos <= HOEK) {
+    if (currentpos < 0) {
       // home again
-      steppers[i]->setCurrentPosition(HOEK);
+      steppers[i]->setCurrentPosition(0);
       steppers[i]->run();
-      currentpos = HOEK;
+      currentpos = 0;
     }
-    distanceToGo[i] = (long)(pattern[step][i]*HOEK) - currentpos; //HOEK
+    long value = pattern[step][i];
+    if (value > 239){
+      home(i,(value-256)*HOEK);
+      distanceToGo[i]=0;
+    } else {
+      distanceToGo[i] = (long)(value*HOEK) - currentpos; //HOEK
+    }
     if (distanceToGo[i] !=  0) {
       longestDistance = max(abs(distanceToGo[i]),longestDistance);
       steppers[i]->enableOutputs();
@@ -354,8 +355,6 @@ void loop() {
         float speed = ((MAXSPEED*distanceToGo[i]) / (1.0*longestDistance));
         steppers[i]->setSpeed(speed);
         uint8_t value = pattern[step][i];
-        //if (value == 0) steppers[i]->moveTo(-5); // -5 enforces 0
-        //else
         steppers[i]->moveTo(value*HOEK);
       }
     }
