@@ -129,7 +129,7 @@ void LogLine(const char * s) {
 
 void setup() {
   Serial.begin(9600); //define baud rate
-  Serial.println("Versie 0.91"); //print a message
+  Serial.println("Versie 0.91a"); //print a message
   DMXSerial.init(DMXReceiver, -1); // slave mode
   SetDefaultPattern();
   memset(row1,'\0',17);
@@ -193,7 +193,6 @@ void setup() {
 
   moresteps = false; //restorePositions(); // init next step or continue where left
   step=totalsteps-1; //++step%totalsteps = 0
-  delay(10000);
   time = micros();  
 }
 
