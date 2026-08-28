@@ -67,10 +67,12 @@ unsigned long delta;
 
 const int dmxChannel = 3;//0 =  preanble, 1 = duration, 2 = sequence number
 uint8_t module = 0; // read from eeprom
-#define totalsteps 30
+#define totalsteps 31
 volatile uint8_t pattern[totalsteps][totalsteppers] = {
  // 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15 
 {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+{240,0,240,0,240,0,240,0,240,0,240,0,240,0,240,0},
+{0,240,0,240,0,240,0,240,0,240,0,240,0,240,0,240},
 {0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8},
 {4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4},
 {3,5,3,5,3,5,3,5,3,5,3,5,3,5,3,5},
@@ -99,7 +101,6 @@ volatile uint8_t pattern[totalsteps][totalsteppers] = {
 {0,8,0,8,0,8,0,8,0,8,0,8,0,8,0,8},
 {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
 {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
-{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
 };
 
 char row1[17];
@@ -128,7 +129,7 @@ void LogLine(const char * s) {
 
 void setup() {
   Serial.begin(9600); //define baud rate
-  Serial.println("Versie 0.9"); //print a message
+  Serial.println("Versie 0.91"); //print a message
   DMXSerial.init(DMXReceiver, -1); // slave mode
   SetDefaultPattern();
   memset(row1,'\0',17);
@@ -182,7 +183,12 @@ void setup() {
     steppers[i]->disableOutputs();
   }
   for(uint8_t i = 0; i < totalsteppers; i++){
-    home(i, HOMING);
+    //  home(i, HOMING);
+    steppers[i]->setSpeed(SPEED);
+    steppers[i]->setAcceleration(ACCEL);
+    steppers[i]->setCurrentPosition(0);
+    steppers[i]->setMaxSpeed(MAXSPEED);
+    steppers[i]->disableOutputs();
   }
 
   moresteps = false; //restorePositions(); // init next step or continue where left
@@ -335,8 +341,7 @@ void loop() {
     }
     long value = pattern[step][i];
     if (value > 239){
-      home(i,(value-256)*HOEK);
-      distanceToGo[i]=0;
+      distanceToGo[i]=(value-256)*HOEK;
     } else {
       distanceToGo[i] = (long)(value*HOEK) - currentpos; //HOEK
     }
@@ -354,8 +359,12 @@ void loop() {
       if (distanceToGo[i] != 0) {
         float speed = ((MAXSPEED*distanceToGo[i]) / (1.0*longestDistance));
         steppers[i]->setSpeed(speed);
-        uint8_t value = pattern[step][i];
-        steppers[i]->moveTo(value*HOEK);
+        long value = pattern[step][i];
+        if (value > 239){
+          steppers[i]->moveTo((value-256)*HOEK);
+        } else {
+          steppers[i]->moveTo(value*HOEK);
+        }
       }
     }
   }
