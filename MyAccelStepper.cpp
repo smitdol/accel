@@ -11,17 +11,29 @@ _portMapper2(Mapper(pin2)),
 _portMapper3(Mapper(pin3)),
 _portMapper4(Mapper(pin4))
 {
+  if (pin1==5 || pin1 == 38) {
+  _pins[3] = _portMapper1.Pin();
+  _pins[2] = _portMapper3.Pin();
+  _pins[1] = _portMapper2.Pin();
+  _pins[0] = _portMapper4.Pin();
+  } else {
+  _pins[0] = _portMapper1.Pin();
+  _pins[1] = _portMapper3.Pin();
+  _pins[2] = _portMapper2.Pin();
+  _pins[3] = _portMapper4.Pin();
+
+  }
 };
 
 void MyAccelStepper::begin(){
-
   _portMapper1.begin();
   _portMapper2.begin();
   _portMapper3.begin();
   _portMapper4.begin();
-
 }
-
+uint8_t* MyAccelStepper::pins(){
+  return _pins;
+}
 void MyAccelStepper::disableOutputs() {
   //AccelStepper::disableOutputs();
   setOutputPins(0);

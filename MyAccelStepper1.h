@@ -24,7 +24,9 @@ public:
     boolean run() override { return AccelStepper::run();};
     long currentPosition() override { return AccelStepper::currentPosition();};
     void moveTo(long absolute) override  {AccelStepper::moveTo(absolute);};
+    uint8_t* pins();
 private:
+  uint8_t _pins[4];
   uint8_t _port;
   uint8_t _digitalPin;
   uint8_t _mask;

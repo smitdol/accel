@@ -21,6 +21,7 @@ public:
     virtual void moveTo(long absolute) = 0;
     virtual void step4(long step) = 0;
     virtual unsigned long computeNewSpeed() = 0;
+    virtual uint8_t* pins() = 0;
    
 };
 #endif

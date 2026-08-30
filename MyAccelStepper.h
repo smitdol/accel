@@ -26,7 +26,7 @@ public:
     long currentPosition() override { return AccelStepper::currentPosition();};
     void moveTo(long absolute) override {AccelStepper::moveTo(absolute);};
     void step4(long step) override {AccelStepper::step4(step);};
-
+    uint8_t* pins();
 private:
   Mapper _portMapper1;
   Mapper _portMapper2;
@@ -44,6 +44,8 @@ private:
 
   /// Min step size in microseconds based on maxSpeed
   long _cmin; // at max speed
+
+  uint8_t _pins[4];
 
 };
 

@@ -74,6 +74,10 @@ Mapper::Mapper(const uint8_t pin)
   _pin = pin;
 }
 
+uint8_t Mapper::Pin()
+{
+  return _pin;
+}
 void Mapper::begin()
 {
   _bit = digitalPinToBitMask(_pin);

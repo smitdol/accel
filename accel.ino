@@ -34,7 +34,7 @@ MyAccelStepper  stepper1(FULLSTEP,  6,  8,  7,  9); //PH3/PH5/PH4/PH6
 MyAccelStepper  stepper2(FULLSTEP,  5,  3,  4,  2); //PE4/PE5/PG5/PE3
 MyAccelStepper  stepper3(FULLSTEP, 17, 15, 16, 14); //PJ1/PH1/PJ0/PH0
 //AccelStepper stepper4(FULLSTEP, 18, 20, 19, 21); //Tx1,SDA,RX1,SCL //PD0-PD3
-MyAccelStepper1 stepper4(FULLSTEP, 22); //PA0 22, 24, 23, 25 1=revert
+MyAccelStepper1 stepper4(FULLSTEP, 22); //PA0 22, 24, 23, 25 
 MyAccelStepperR stepper5(FULLSTEP, 26); //PA4 26, 28, 27, 29
 MyAccelStepper1 stepper6(FULLSTEP, 30); //PC7, PC5, PC6, PC4
 MyAccelStepperR stepper7(FULLSTEP, 34); //PC3, PC1, PC2, PC0
@@ -49,11 +49,10 @@ MyAccelStepperR stepperF(FULLSTEP, 54); //PF0-3
 
 IMyAccelStepper* steppers[totalsteppers];
 
-//long positions[totalsteppers+1]; //1 extra is used in EEPROM 
 long distanceToGo[totalsteppers];
 bool moresteps;
 bool hasLCD;
-//bool targetset;
+uint8_t test = 0;
 bool dmxControlled = false;
 int step;
 unsigned long time;
@@ -129,7 +128,7 @@ void LogLine(const char * s) {
 
 void setup() {
   Serial.begin(9600); //define baud rate
-  Serial.println("Versie 0.91a"); //print a message
+  Serial.println("Versie 0.92"); //print a message
   DMXSerial.init(DMXReceiver, -1); // slave mode
   SetDefaultPattern();
   memset(row1,'\0',17);
@@ -263,6 +262,43 @@ void CheckSerial() {
           LogLine(buffer);
         }
         break;
+      case 'r':
+        for(uint8_t i = 0; i < totalsteppers; i++){
+          steppers[i]->setMaxSpeed(MAXSPEED);
+          steppers[i]->setSpeed(SPEED);
+          steppers[i]->setAcceleration(ACCEL);
+        }
+        snprintf(buffer, 16, "Speed reset");
+        LogLine(buffer);
+        break;
+      case 's':
+        parsedInt = Serial.parseInt();
+        if (parsedInt < 0 || parsedInt > MAXSPEED)
+        {
+          snprintf(buffer, 16, "invalid %i",parsedInt);
+          LogLine(buffer);
+        } else {
+          for(uint8_t i = 0; i < totalsteppers; i++){
+            steppers[i]->setMaxSpeed(parsedInt);
+            steppers[i]->setSpeed(parsedInt);
+            steppers[i]->setAcceleration(1.0);
+          }
+          snprintf(buffer, 16, "setSpeed %i",parsedInt);
+          LogLine(buffer);
+        }
+        break;
+      case 't':
+        parsedInt = Serial.parseInt();
+        if (parsedInt < 0 || parsedInt > 2)
+        {
+          snprintf(buffer, 16, "invalid %i",parsedInt);
+          LogLine(buffer);
+        } else {
+          test = parsedInt;
+          snprintf(buffer, 16, "test %i",parsedInt);
+          LogLine(buffer);
+        }
+        break;
       default:
         snprintf(buffer, 16, "received %c",receivedCommand);
         LogLine(buffer);
@@ -311,6 +347,47 @@ void UpdatePattern() {
 
 void loop() {
   CheckSerial();
+  if (test > 0) {
+    for( uint8_t i = 0; i < totalsteppers; i++) {
+      uint8_t* ports = steppers[i]->pins();
+      for (uint8_t p = 0; p < 4; p++) {
+        uint8_t pin = ports[p];
+        digitalWrite(pin, LOW);
+        CheckSerial();
+        if (!test) { return;}
+      }
+    }
+    if (test == 2)
+    {
+      for( uint8_t i = 0; i < totalsteppers; i++) {
+        uint8_t* ports = steppers[i]->pins();
+        for (uint8_t p = 0; p < 4; p++) {
+          uint8_t pin = ports[p];
+          digitalWrite(pin, HIGH);
+          delay(250);
+          digitalWrite(pin, LOW);
+          CheckSerial();
+          if (!test) { return;}
+        }
+      }
+    } else {
+      for (uint8_t p = 0; p < 4; p++) {
+        for( uint8_t i = 0; i < totalsteppers; i++) {
+          uint8_t* ports = steppers[i]->pins();
+          uint8_t pin = ports[p];
+          digitalWrite(pin, HIGH);
+        }
+        delay(250);
+        for( uint8_t i = 0; i < totalsteppers; i++) {
+          uint8_t* ports = steppers[i]->pins();
+          uint8_t pin = ports[p];
+          digitalWrite(pin, LOW);
+        }
+        CheckSerial();
+        if (!test) { return;}
+      }
+    }
+  }
   if (moresteps) {
     moresteps=false;
     for( uint8_t i = 0; i < totalsteppers; i++) {

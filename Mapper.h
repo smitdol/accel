@@ -16,6 +16,7 @@ public:
   void begin();
   void setOutputPin(uint8_t bits, uint8_t bit);
   void enableOutput();
+  uint8_t Pin();
 private:
   uint8_t _pin;
   uint8_t _bit;

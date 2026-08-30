@@ -80,7 +80,24 @@ _c0(0),
 _cn(00),
 _cmin(1)
 {
+  if (digitalPin==22||digitalPin==30||digitalPin==46)
+  {
+  _pins[3] = digitalPin;
+  _pins[2] = digitalPin+1;
+  _pins[1] = digitalPin+2;
+  _pins[0] = digitalPin+3;
+  }
+  else{
+  _pins[0] = digitalPin;
+  _pins[1] = digitalPin+1;
+  _pins[2] = digitalPin+2;
+  _pins[3] = digitalPin+3;
+  }
 };
+
+uint8_t* MyAccelStepper1::pins() {
+  return _pins;
+}
 
 void MyAccelStepper1::begin(){
   _port = digitalPinToPort(_digitalPin);
