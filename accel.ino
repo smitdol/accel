@@ -11,6 +11,7 @@
 #include <hd44780.h>                       // main hd44780 header
 #include <hd44780ioClass/hd44780_I2Cexp.h> // i2c expander i/o class header
 
+#define version "Version 0.93"
 
 hd44780_I2Cexp lcd; // declare lcd object: auto locate & auto config expander chip
 // LCD geometry
@@ -26,8 +27,7 @@ const int LCD_ROWS = 2;
 //assuming 1:63.68395, 32 steps/rev => 2037.8864 for 360 => 2037.8864 * 22.5/360 = 127.369 
 #define HOMING -16*HOEK
 #define totalsteppers 16
-//3 2 1 4 5 6 7 8 9 A b c f g d e
-//2 1 0 3 4 5 6 7 8 9 a b e f c d
+
 // Pins entered in sequence IN1-IN3-IN2-IN4 for proper step sequence
 MyAccelStepper1 stepper0(FULLSTEP, 10); //PB4-7
 MyAccelStepper  stepper1(FULLSTEP,  6,  8,  7,  9); //PH3/PH5/PH4/PH6
@@ -128,7 +128,6 @@ void LogLine(const char * s) {
 
 void setup() {
   Serial.begin(9600); //define baud rate
-  Serial.println("Versie 0.92"); //print a message
   DMXSerial.init(DMXReceiver, -1); // slave mode
   SetDefaultPattern();
   memset(row1,'\0',17);
@@ -138,23 +137,21 @@ void setup() {
   int status = lcd.begin(LCD_COLS, LCD_ROWS);
 	if(status) // non zero status means it was unsuccesful
 	{
-  	Serial.print("LCD initalization failed: ");
-		Serial.println(status);
-
 		// hd44780 has a fatalError() routine that blinks an led if possible
 		// begin() failed so blink error code using the onboard LED if possible
-		 hasLCD = false;//hd44780::fatalError(status); // does not return
+		 hasLCD = false;  //hd44780::fatalError(status); // does not return
+     snprintf(buffer, 16,"No LCD: %i",status);LogLine(buffer);
 	} else {
     hasLCD= true;
-	  lcd.print("Hello, World!");
   }
+  snprintf(buffer, 16,__DATE__);LogLine(buffer);
+  snprintf(buffer, 16,__TIME__);LogLine(buffer);
+  snprintf(buffer, 16,version);LogLine(buffer);
 
   EEPROM.get(0, module);
-  snprintf(buffer, 16, "EEPROM0=%i",module);
+  snprintf(buffer, 16,"EEPROM0=%i",module);LogLine(buffer);
   if (module > 31) module = 0;
-  snprintf(buffer, 16, "Module=%i",module);
-  LogLine(buffer);
-
+  snprintf(buffer, 16,"Module=%i",module);LogLine(buffer);
 
   steppers[0] = &stepper0;
   steppers[1] = &stepper1;
@@ -201,15 +198,14 @@ void nextstep() {
 
 void home(unsigned k, long relative) {
   //https://curiousscientist.tech/blog/accelstepper-tb6600-homing
-  LogLine("Homing motors");
+  snprintf(buffer, 16,"Homing motors");LogLine(buffer);
   if (k >= totalsteppers) {
-    LogLine("Cannot home");
-    snprintf(buffer,16, "motor %i", k);
-    LogLine(buffer);
+    snprintf(buffer, 16,"Cannot home");LogLine(buffer);
+    snprintf(buffer, 16,"motor %i", k);LogLine(buffer);
     return;
   }
-  snprintf(buffer, 16, "%i ", k);
-  LogLine(buffer);
+  snprintf(buffer, 16,"%i ", k);LogLine(buffer);
+  
   
   steppers[k]->enableOutputs();
   steppers[k]->setCurrentPosition(0);
@@ -228,9 +224,9 @@ void home(unsigned k, long relative) {
   steppers[k]->setCurrentPosition(0);
   steppers[k]->setMaxSpeed(MAXSPEED);
   steppers[k]->disableOutputs();
-  LogLine("Completed HOMING");
-  snprintf(buffer, 16, "motor %i", k);
-  LogLine(buffer);
+  snprintf(buffer, 16,"Completed HOMING");LogLine(buffer);
+  snprintf(buffer, 16,"motor %i", k);LogLine(buffer);
+  
 }
 
 void CheckSerial() {
@@ -246,20 +242,19 @@ void CheckSerial() {
         break;
       case 'i':
         EEPROM.get(0, module);
-        snprintf(buffer, 16, "Module=%i",module);
-        LogLine(buffer);
+        snprintf(buffer, 16,"Module=%i",module);LogLine(buffer);
+        
         break;
       case 'm':
         parsedInt = Serial.parseInt();
         if (parsedInt < 0 || parsedInt > 31)
         {
-          snprintf(buffer, 16, "invalid %i",parsedInt);
-          LogLine(buffer);
+          snprintf(buffer, 16,"invalid %i",parsedInt);LogLine(buffer);
         } else {
           module=parsedInt;
           EEPROM.put(0, module);
-          snprintf(buffer, 16, "setModule %i",module);
-          LogLine(buffer);
+          snprintf(buffer, 16,"setModule %i",parsedInt);LogLine(buffer);
+          Serial.println(parsedInt);
         }
         break;
       case 'r':
@@ -268,47 +263,46 @@ void CheckSerial() {
           steppers[i]->setSpeed(SPEED);
           steppers[i]->setAcceleration(ACCEL);
         }
-        snprintf(buffer, 16, "Speed reset");
-        LogLine(buffer);
+        snprintf(buffer, 16,"Speed reset");LogLine(buffer);
+        
         break;
       case 's':
         parsedInt = Serial.parseInt();
         if (parsedInt < 0 || parsedInt > MAXSPEED)
         {
-          snprintf(buffer, 16, "invalid %i",parsedInt);
-          LogLine(buffer);
+          snprintf(buffer, 16,"invalid %i",parsedInt);LogLine(buffer);
+          
         } else {
           for(uint8_t i = 0; i < totalsteppers; i++){
             steppers[i]->setMaxSpeed(parsedInt);
             steppers[i]->setSpeed(parsedInt);
             steppers[i]->setAcceleration(1.0);
           }
-          snprintf(buffer, 16, "setSpeed %i",parsedInt);
-          LogLine(buffer);
+          snprintf(buffer, 16,"setSpeed %i",parsedInt);LogLine(buffer);
+          
         }
         break;
       case 't':
         parsedInt = Serial.parseInt();
         if (parsedInt < 0 || parsedInt > 2)
         {
-          snprintf(buffer, 16, "invalid %i",parsedInt);
-          LogLine(buffer);
+          snprintf(buffer, 16,"invalid %i",parsedInt);LogLine(buffer);
+          
         } else {
           test = parsedInt;
-          snprintf(buffer, 16, "test %i",parsedInt);
-          LogLine(buffer);
+          snprintf(buffer, 16,"test %i",parsedInt);LogLine(buffer);
+          
         }
         break;
       default:
-        snprintf(buffer, 16, "received %c",receivedCommand);
-        LogLine(buffer);
+        snprintf(buffer, 16,"received %c",receivedCommand); LogLine(buffer);
         break;
     }
   }
 }
 
 void SetDefaultPattern() {
-  Serial.print("SetDefaultPattern:");
+  snprintf(buffer, 16,"SetDefaultPattern"); LogLine(buffer);
   int index = dmxChannel + (module * totalsteppers);
   for (uint8_t j = 0; j < totalsteppers; j++){
     uint8_t value = pattern[0][j];
@@ -323,14 +317,15 @@ void SetDefaultPattern() {
 void UpdatePattern() {
   if (DMXSerial.dataUpdated()) {
     DMXSerial.resetUpdated();
-    Serial.print("UpdatePattern ");
-    int index;
-    uint8_t value;
-    for (index = 0; index < dmxChannel; index++)
-    {
-      value = DMXSerial.read(index); // 0 = preable, 1 = timeout, 2 = sequencenr, next = data
-      Serial.print(value);Serial.print(":");
-    }
+    snprintf(buffer, 16,"UpdatePattern"); LogLine(buffer);
+    int index = 0;
+    // 0 = preable, 1 = timeout, 2 = sequencenr, next = data
+    test = DMXSerial.read(index++); 
+    snprintf(buffer, 16,"preamble: %i",test);LogLine(buffer);
+    uint8_t value = DMXSerial.read(index++); 
+    snprintf(buffer, 16,"timeout: %i",value);LogLine(buffer);
+    value = DMXSerial.read(index++);
+    snprintf(buffer, 16,"sequencenr: %i",value);LogLine(buffer);
     index = dmxChannel + (module * totalsteppers);
     for (uint8_t j = 0; j < totalsteppers; j++){
       value = DMXSerial.read(index+j);
@@ -354,6 +349,7 @@ void loop() {
         uint8_t pin = ports[p];
         digitalWrite(pin, LOW);
         CheckSerial();
+        UpdatePattern();
         if (!test) { return;}
       }
     }
@@ -367,6 +363,7 @@ void loop() {
           delay(250);
           digitalWrite(pin, LOW);
           CheckSerial();
+          UpdatePattern();
           if (!test) { return;}
         }
       }
@@ -384,6 +381,7 @@ void loop() {
           digitalWrite(pin, LOW);
         }
         CheckSerial();
+        UpdatePattern();
         if (!test) { return;}
       }
     }
@@ -401,11 +399,10 @@ void loop() {
   UpdatePattern();
   now = micros();
   delta = now - time;
-  snprintf(buffer,16,"time: %ld  ", delta);
-  LogLine(buffer);
+  snprintf(buffer, 16,"time: %ld  ", delta); LogLine(buffer);
   time = now;
   nextstep();
-  Serial.print("step=");Serial.println(step);
+  snprintf(buffer, 16,"step: %i", step); LogLine(buffer);
   long longestDistance = 0L;
   for( uint8_t i = 0; i < totalsteppers; i++) {
     long currentpos = steppers[i]->currentPosition();
