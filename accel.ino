@@ -11,7 +11,7 @@
 #include <hd44780.h>                       // main hd44780 header
 #include <hd44780ioClass/hd44780_I2Cexp.h> // i2c expander i/o class header
 
-#define version "Version 0.93"
+#define version "Version 0.94"
 
 hd44780_I2Cexp lcd; // declare lcd object: auto locate & auto config expander chip
 // LCD geometry
@@ -55,16 +55,19 @@ bool hasLCD;
 uint8_t test = 0;
 bool dmxControlled = false;
 int step;
+int sequencenr;
+int previoussequencenr;
 unsigned long time;
 unsigned long now;
 unsigned long delta;
+unsigned long timeout;
 //https://arduino.stackexchange.com/questions/16352/measure-vcc-using-1-1v-bandgap ?
 //https://www.codrey.com/arduino-projects/arduino-power-down-auto-save/
 //int PD_PIN =2; // D2 used for  power-down detection (INT.0)
 
 // 1019 = 2038/2, where 2038 is not 2048 
 
-const int dmxChannel = 3;//0 =  preanble, 1 = duration, 2 = sequence number
+#define dmxChannel 4;//0 =  preanble, 1 = test, 2 = duration, 3 = sequence number
 uint8_t module = 0; // read from eeprom
 #define totalsteps 31
 volatile uint8_t pattern[totalsteps][totalsteppers] = {
@@ -179,7 +182,7 @@ void setup() {
     steppers[i]->disableOutputs();
   }
   for(uint8_t i = 0; i < totalsteppers; i++){
-    //  home(i, HOMING);
+  //  home(i, HOMING);
     steppers[i]->setSpeed(SPEED);
     steppers[i]->setAcceleration(ACCEL);
     steppers[i]->setCurrentPosition(0);
@@ -193,7 +196,12 @@ void setup() {
 }
 
 void nextstep() {
-  step=(++step)%totalsteps;
+  if (dmxControlled)
+  {
+    step = 0;
+  } else {
+    step=(++step)%totalsteps;
+  }
 }
 
 void home(unsigned k, long relative) {
@@ -284,7 +292,7 @@ void CheckSerial() {
         break;
       case 't':
         parsedInt = Serial.parseInt();
-        if (parsedInt < 0 || parsedInt > 2)
+        if (parsedInt < 0 || parsedInt > 3)
         {
           snprintf(buffer, 16,"invalid %i",parsedInt);LogLine(buffer);
           
@@ -302,14 +310,11 @@ void CheckSerial() {
 }
 
 void SetDefaultPattern() {
-  snprintf(buffer, 16,"SetDefaultPattern"); LogLine(buffer);
   int index = dmxChannel + (module * totalsteppers);
   for (uint8_t j = 0; j < totalsteppers; j++){
     uint8_t value = pattern[0][j];
     DMXSerial.write(index+j,value);
-    Serial.print(value);Serial.print(",");
   } // 34*16 = 544 > 512; 512/16 = 32; dmxChannel ~ 30*16 = 480
-  Serial.println();
   DMXSerial.resetUpdated();
 }
 
@@ -317,22 +322,14 @@ void SetDefaultPattern() {
 void UpdatePattern() {
   if (DMXSerial.dataUpdated()) {
     DMXSerial.resetUpdated();
-    snprintf(buffer, 16,"UpdatePattern"); LogLine(buffer);
-    int index = 0;
-    // 0 = preable, 1 = timeout, 2 = sequencenr, next = data
+    int index = 1;
+    // 0 = preable (unused), 1 = test, 2 = timeout, 3 = sequencenr, next = data
     test = DMXSerial.read(index++); 
-    snprintf(buffer, 16,"preamble: %i",test);LogLine(buffer);
-    uint8_t value = DMXSerial.read(index++); 
-    snprintf(buffer, 16,"timeout: %i",value);LogLine(buffer);
-    value = DMXSerial.read(index++);
-    snprintf(buffer, 16,"sequencenr: %i",value);LogLine(buffer);
+    uint8_t value = DMXSerial.read(index++);
+    timeout = value;
+    sequencenr = DMXSerial.read(index++);
     index = dmxChannel + (module * totalsteppers);
-    for (uint8_t j = 0; j < totalsteppers; j++){
-      value = DMXSerial.read(index+j);
-      pattern[0][j]=value;
-      Serial.print(value);Serial.print(",");
-    }
-    Serial.println();
+    memcpy(&pattern[0][0], &DMXSerial.getBuffer()[index],totalsteppers);
     dmxControlled = true;
   }
   if (dmxControlled) {
@@ -353,37 +350,45 @@ void loop() {
         if (!test) { return;}
       }
     }
-    if (test == 2)
-    {
-      for( uint8_t i = 0; i < totalsteppers; i++) {
-        uint8_t* ports = steppers[i]->pins();
+    switch (test) {
+      case 2:
+        for( uint8_t i = 0; i < totalsteppers; i++) {
+          uint8_t* ports = steppers[i]->pins();
+          for (uint8_t p = 0; p < 4; p++) {
+            uint8_t pin = ports[p];
+            digitalWrite(pin, HIGH);
+            delay(250);
+            digitalWrite(pin, LOW);
+            CheckSerial();
+            UpdatePattern();
+            if (!test) { return;}
+          }
+        }
+        break;
+      default:
         for (uint8_t p = 0; p < 4; p++) {
-          uint8_t pin = ports[p];
-          digitalWrite(pin, HIGH);
+          for( uint8_t i = 0; i < totalsteppers; i++) {
+            uint8_t* ports = steppers[i]->pins();
+            uint8_t pin = ports[p];
+            digitalWrite(pin, HIGH);
+          }
           delay(250);
-          digitalWrite(pin, LOW);
+          for( uint8_t i = 0; i < totalsteppers; i++) {
+            uint8_t* ports = steppers[i]->pins();
+            uint8_t pin = ports[p];
+            digitalWrite(pin, LOW);
+          }
           CheckSerial();
           UpdatePattern();
           if (!test) { return;}
         }
-      }
-    } else {
-      for (uint8_t p = 0; p < 4; p++) {
+        break;
+      case 3:
         for( uint8_t i = 0; i < totalsteppers; i++) {
-          uint8_t* ports = steppers[i]->pins();
-          uint8_t pin = ports[p];
-          digitalWrite(pin, HIGH);
+          home(i, HOMING);
+          if (!test) { return;}
         }
-        delay(250);
-        for( uint8_t i = 0; i < totalsteppers; i++) {
-          uint8_t* ports = steppers[i]->pins();
-          uint8_t pin = ports[p];
-          digitalWrite(pin, LOW);
-        }
-        CheckSerial();
-        UpdatePattern();
-        if (!test) { return;}
-      }
+        break;
     }
   }
   if (moresteps) {
@@ -399,10 +404,25 @@ void loop() {
   UpdatePattern();
   now = micros();
   delta = now - time;
-  snprintf(buffer, 16,"time: %ld  ", delta); LogLine(buffer);
+  if (dmxControlled){
+    if (sequencenr != previoussequencenr){
+      timeout = 1000L*500L*timeout;
+      if (delta > timeout) {
+        Serial.print("*");
+      } else {
+        Serial.print(" ");
+      }
+      snprintf(buffer, 16," seq.nr: %i,", sequencenr); Serial.print(buffer);
+      snprintf(buffer, 16," to: %li,", timeout); Serial.print(buffer);
+      snprintf(buffer, 16," dta:%li", delta); Serial.println(buffer);
+    }
+    previoussequencenr = sequencenr;
+  }
   time = now;
   nextstep();
-  snprintf(buffer, 16,"step: %i", step); LogLine(buffer);
+  if (step) {
+    snprintf(buffer, 16,"step: %i", step); LogLine(buffer);
+  }
   long longestDistance = 0L;
   for( uint8_t i = 0; i < totalsteppers; i++) {
     long currentpos = steppers[i]->currentPosition();
