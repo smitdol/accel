@@ -325,8 +325,7 @@ void UpdatePattern() {
     int index = 1;
     // 0 = preable (unused), 1 = test, 2 = timeout, 3 = sequencenr, next = data
     test = DMXSerial.read(index++); 
-    uint8_t value = DMXSerial.read(index++);
-    timeout = value;
+    timeout = DMXSerial.read(index++);
     sequencenr = DMXSerial.read(index++);
     index = dmxChannel + (module * totalsteppers);
     memcpy(&pattern[0][0], &DMXSerial.getBuffer()[index],totalsteppers);
@@ -415,8 +414,8 @@ void loop() {
       snprintf(buffer, 16," seq.nr: %i,", sequencenr); Serial.print(buffer);
       snprintf(buffer, 16," to: %li,", timeout); Serial.print(buffer);
       snprintf(buffer, 16," dta:%li", delta); Serial.println(buffer);
+      previoussequencenr = sequencenr;
     }
-    previoussequencenr = sequencenr;
   }
   time = now;
   nextstep();
